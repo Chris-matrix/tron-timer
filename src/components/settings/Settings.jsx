@@ -299,6 +299,23 @@ const Settings = () => {
     setSettings(prev => ({ ...prev, character: characterId }));
   };
   
+  const testYoutubeUrl = (url) => {
+    if (!url) return;
+    
+    // Extract video ID from URL
+    let videoId = '';
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    
+    if (match && match[2].length === 11) {
+      videoId = match[2];
+      // Open a small window to test the video
+      window.open(`https://www.youtube.com/embed/${videoId}?autoplay=1`, 'youtube-test', 'width=400,height=300');
+    } else {
+      window.alert('Invalid YouTube URL. Please enter a valid URL.');
+    }
+  };
+  
   return (
     <SettingsContainer>
       <SettingsHeader>Settings</SettingsHeader>
@@ -375,25 +392,90 @@ const Settings = () => {
         <SectionTitle>🎨 Theme Settings</SectionTitle>
         <p>Choose a theme that matches your character's identity circuit colors</p>
         <ThemeGrid>
-          {Object.entries(availableThemes).map(([id, colors]) => {
+          {Object.entries(availableThemes).map(([id, theme]) => {
             return (
               <ThemeCard 
                 key={id}
                 $isSelected={settings.theme === id}
-                $themeColor={{
-                  primary: colors.primary,
-                  background: colors.background
-                }}
+                $themeColor={theme}
                 onClick={() => selectTheme(id)}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <ThemeName>{id.charAt(0).toUpperCase() + id.slice(1)}</ThemeName>
-                <ThemeColorPreview $color={colors.primary} />
+                <ThemeName $themeColor={theme}>{theme.name}</ThemeName>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '10px' }}>
+                  <ThemeColorPreview $color={theme.primary} />
+                  <ThemeColorPreview $color={theme.accent} style={{ opacity: 0.7 }} />
+                </div>
+                <small style={{ marginTop: '8px', opacity: 0.8, fontSize: '0.8rem' }}>{theme.description}</small>
               </ThemeCard>
             );
           })}
         </ThemeGrid>
+      </SettingsSection>
+      
+      <SettingsSection>
+        <SectionTitle>🎵 Background Music</SectionTitle>
+        <p>Add a YouTube URL to play music in the background while you focus</p>
+        <FormGroup>
+          <Label htmlFor="musicYoutubeUrl">YouTube Music URL</Label>
+          <Input 
+            type="text" 
+            id="musicYoutubeUrl" 
+            name="musicYoutubeUrl" 
+            placeholder="https://www.youtube.com/watch?v=..." 
+            value={settings.musicYoutubeUrl || ''} 
+            onChange={handleInputChange} 
+          />
+        </FormGroup>
+        <Button 
+          onClick={() => testYoutubeUrl(settings.musicYoutubeUrl)}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          style={{ marginTop: '10px' }}
+          disabled={!settings.musicYoutubeUrl}
+        >
+          Test Music
+        </Button>
+      </SettingsSection>
+      
+      <SettingsSection>
+        <SectionTitle>🖼️ Background Style</SectionTitle>
+        <p>Choose the background animation style</p>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '15px' }}>
+          <Button 
+            onClick={() => setSettings(prev => ({ ...prev, backgroundStyle: 'grid' }))}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            $primary={settings.backgroundStyle === 'grid'}
+          >
+            Grid
+          </Button>
+          <Button 
+            onClick={() => setSettings(prev => ({ ...prev, backgroundStyle: 'circuits' }))}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            $primary={settings.backgroundStyle === 'circuits'}
+          >
+            Circuits
+          </Button>
+          <Button 
+            onClick={() => setSettings(prev => ({ ...prev, backgroundStyle: 'minimal' }))}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            $primary={settings.backgroundStyle === 'minimal'}
+          >
+            Minimal
+          </Button>
+          <Button 
+            onClick={() => setSettings(prev => ({ ...prev, backgroundStyle: 'code' }))}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            $primary={settings.backgroundStyle === 'code'}
+          >
+            Code Rain
+          </Button>
+        </div>
       </SettingsSection>
       
       <SettingsSection>

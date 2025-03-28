@@ -1,8 +1,8 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import App from './App';
-import { DataProvider } from './context/DataContext';
-import { AchievementProvider } from './context/AchievementContext';
+import App from './App.jsx';
+import { DataProvider } from './context/DataContext.jsx';
+import { AchievementProvider } from './context/AchievementContext.jsx';
 
 const container = document.getElementById('root');
 const root = createRoot(container);

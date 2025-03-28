@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Tron-themed Focus Timer Application with achievement system and analytics",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "webpack serve --mode development --open",
@@ -10,7 +11,9 @@
     "dev": "webpack serve --mode development",
     "serve": "node server.js",
     "lint": "eslint src --ext .js,.jsx",
-    "lint:fix": "eslint src --ext .js,.jsx --fix"
+    "lint:fix": "eslint src --ext .js,.jsx --fix",
+    "lint:components": "eslint src/components --ext .js,.jsx",
+    "lint:file": "eslint src/index.js --ext .js,.jsx --fix"
   },
   "keywords": [
     "tron",
@@ -34,6 +37,7 @@
     "@babel/core": "^7.26.10",
     "@babel/preset-env": "^7.26.9",
     "@babel/preset-react": "^7.26.3",
+    "@eslint/js": "^9.23.0",
     "babel-loader": "^10.0.0",
     "css-loader": "^7.1.2",
     "eslint": "^9.23.0",

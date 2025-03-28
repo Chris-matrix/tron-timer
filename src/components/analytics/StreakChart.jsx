@@ -50,26 +50,33 @@ const StreakChart = () => {
   const { focusData } = useData();
   
   // Prepare data for the chart
-  const chartData = focusData.streaks.history.map(streak => ({
-    date: streak.date,
-    count: streak.count
-  }));
+  const chartData = focusData && focusData.streaks && focusData.streaks.history 
+    ? focusData.streaks.history.map(streak => ({
+        date: streak.date,
+        count: streak.count
+      }))
+    : [];
   
   // Find the longest streak
-  const longestStreak = focusData.streaks.longest;
+  const longestStreak = focusData?.streaks?.longest || 0;
   
   // Custom tooltip component
   const renderTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
-      const date = new Date(label).toLocaleDateString();
-      const streakCount = payload[0].value;
-      
-      return (
-        <CustomTooltip>
-          <div className="label">{date}</div>
-          <div className="value">Streak: {streakCount} day{streakCount !== 1 ? 's' : ''}</div>
-        </CustomTooltip>
-      );
+      try {
+        const date = new Date(label).toLocaleDateString();
+        const streakCount = payload[0].value;
+        
+        return (
+          <CustomTooltip>
+            <div className="label">{date}</div>
+            <div className="value">Streak: {streakCount} day{streakCount !== 1 ? 's' : ''}</div>
+          </CustomTooltip>
+        );
+      } catch (error) {
+        console.error('Error rendering tooltip:', error);
+        return null;
+      }
     }
     
     return null;
@@ -96,7 +103,14 @@ const StreakChart = () => {
             dataKey="date" 
             stroke="#00f6ff"
             tick={{ fill: '#ffffff' }}
-            tickFormatter={(date) => new Date(date).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+            tickFormatter={(date) => {
+              try {
+                return new Date(date).toLocaleDateString([], { month: 'short', day: 'numeric' });
+              } catch (error) {
+                console.error('Error formatting date:', date, error);
+                return '';
+              }
+            }}
           />
           <YAxis 
             stroke="#00f6ff"

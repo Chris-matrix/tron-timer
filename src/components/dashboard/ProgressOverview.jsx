@@ -61,7 +61,7 @@ const ProgressBarContainer = styled.div`
 
 const ProgressBar = styled(motion.div)`
   height: 100%;
-  width: ${props => props.progress}%;
+  width: ${props => props.$progress}%;
   background-color: ${props => props.theme.primary};
   border-radius: 6px;
   position: relative;
@@ -177,7 +177,7 @@ const ProgressOverview = () => {
             <CardTitle>Daily Focus Goal</CardTitle>
             <ProgressBarContainer>
               <ProgressBar 
-                progress={dailyProgress}
+                $progress={dailyProgress}
                 initial={{ width: 0 }}
                 animate={{ width: `${dailyProgress}%` }}
                 transition={{ duration: 1, ease: "easeOut" }}
@@ -191,7 +191,7 @@ const ProgressOverview = () => {
             <CardTitle>Weekly Focus Goal</CardTitle>
             <ProgressBarContainer>
               <ProgressBar 
-                progress={weeklyProgress}
+                $progress={weeklyProgress}
                 initial={{ width: 0 }}
                 animate={{ width: `${weeklyProgress}%` }}
                 transition={{ duration: 1, ease: "easeOut" }}
@@ -205,7 +205,7 @@ const ProgressOverview = () => {
             <CardTitle>Achievement Progress</CardTitle>
             <ProgressBarContainer>
               <ProgressBar 
-                progress={achievementProgress}
+                $progress={achievementProgress}
                 initial={{ width: 0 }}
                 animate={{ width: `${achievementProgress}%` }}
                 transition={{ duration: 1, ease: "easeOut" }}

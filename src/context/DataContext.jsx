@@ -24,20 +24,24 @@ const initialData = {
     dailyGoal: 120, // in minutes
     weeklyGoal: 600, // in minutes
     theme: 'tron', // 'dark' or 'light'
-    character: 'tron'
+    character: 'tron',
+    musicYoutubeUrl: '',
+    backgroundStyle: 'grid', // 'grid', 'circuits', 'minimal'
   },
   lastActive: null,
 };
 
 // Define available themes and characters
-const AVAILABLE_THEMES = {
+export const AVAILABLE_THEMES = {
   tron: {
     primary: '#00f6ff',
     secondary: '#ffffff',
     background: '#0c141f',
     text: '#ffffff',
     grid: '#1d2c3f',
-    accent: '#00f6ff'
+    accent: '#00f6ff',
+    name: 'Tron Legacy',
+    description: 'Classic blue circuit theme from Tron Legacy'
   },
   clu: {
     primary: '#ff8800',
@@ -45,7 +49,9 @@ const AVAILABLE_THEMES = {
     background: '#0d0d0d',
     text: '#ffffff',
     grid: '#1a1a1a',
-    accent: '#ff8800'
+    accent: '#ff8800',
+    name: 'CLU',
+    description: 'Orange villain theme inspired by CLU'
   },
   quorra: {
     primary: '#ffffff',
@@ -53,7 +59,9 @@ const AVAILABLE_THEMES = {
     background: '#0f0f0f',
     text: '#ffffff',
     grid: '#2a2a2a',
-    accent: '#c0c0c0'
+    accent: '#c0c0c0',
+    name: 'Quorra',
+    description: 'White and silver ISO theme'
   },
   program: {
     primary: '#0058f8',
@@ -61,15 +69,61 @@ const AVAILABLE_THEMES = {
     background: '#0d0d0d',
     text: '#ffffff',
     grid: '#1a1a1a',
-    accent: '#0058f8'
+    accent: '#0058f8',
+    name: 'Program',
+    description: 'Basic program with blue circuitry'
+  },
+  rinzler: {
+    primary: '#ff3300',
+    secondary: '#cc2200',
+    background: '#0a0a0a',
+    text: '#ffffff',
+    grid: '#1a1a1a',
+    accent: '#ff3300',
+    name: 'Rinzler',
+    description: 'Red-orange theme inspired by reprogrammed Tron'
+  },
+  matrix: {
+    primary: '#00ff00',
+    secondary: '#00cc00',
+    background: '#000000',
+    text: '#00ff00',
+    grid: '#001100',
+    accent: '#00ff00',
+    name: 'Matrix',
+    description: 'Green code theme inspired by The Matrix'
+  },
+  cyberpunk: {
+    primary: '#ff00ff',
+    secondary: '#cc00cc',
+    background: '#0a0a18',
+    text: '#ffffff',
+    grid: '#1a1a2a',
+    accent: '#ff00ff',
+    name: 'Cyberpunk',
+    description: 'Neon pink futuristic theme'
+  },
+  synthwave: {
+    primary: '#ff00aa',
+    secondary: '#aa0088',
+    background: '#16002a',
+    text: '#ffffff',
+    grid: '#2a0044',
+    accent: '#00ffff',
+    name: 'Synthwave',
+    description: '80s retro synthwave sunset colors'
   }
 };
 
-const AVAILABLE_CHARACTERS = [
+export const AVAILABLE_CHARACTERS = [
   { id: 'tron', name: 'Tron', description: 'Security program with white and light blue circuitry' },
   { id: 'clu', name: 'CLU', description: 'System administrator with black and orange circuitry' },
   { id: 'quorra', name: 'Quorra', description: 'ISO with white and silver circuitry' },
-  { id: 'program', name: 'Program', description: 'Basic program with black and blue circuitry' }
+  { id: 'program', name: 'Program', description: 'Basic program with black and blue circuitry' },
+  { id: 'rinzler', name: 'Rinzler', description: 'Reprogrammed Tron with red-orange circuitry' },
+  { id: 'sam', name: 'Sam Flynn', description: 'User with blue-white circuitry' },
+  { id: 'kevin', name: 'Kevin Flynn', description: 'Creator with white circuitry' },
+  { id: 'custom', name: 'Custom', description: 'Create your own identity' }
 ];
 
 export const DataProvider = ({ children }) => {
@@ -211,13 +265,21 @@ export const DataProvider = ({ children }) => {
   
   // Toggle theme
   const toggleTheme = () => {
-    setFocusData(prevData => ({
-      ...prevData,
-      settings: {
-        ...prevData.settings,
-        theme: prevData.settings.theme === 'tron' ? 'matrix' : 'tron'
-      }
-    }));
+    setFocusData(prevData => {
+      const currentThemeId = prevData.settings.theme;
+      const themeKeys = Object.keys(AVAILABLE_THEMES);
+      const currentIndex = themeKeys.indexOf(currentThemeId);
+      const nextIndex = (currentIndex + 1) % themeKeys.length;
+      const nextThemeId = themeKeys[nextIndex];
+      
+      return {
+        ...prevData,
+        settings: {
+          ...prevData.settings,
+          theme: nextThemeId
+        }
+      };
+    });
   };
   
   // Get daily progress as percentage
@@ -260,10 +322,7 @@ export const DataProvider = ({ children }) => {
   };
   
   const getAvailableThemes = () => {
-    return Object.keys(AVAILABLE_THEMES).map(key => ({
-      id: key,
-      name: key.charAt(0).toUpperCase() + key.slice(1)
-    }));
+    return AVAILABLE_THEMES;
   };
   
   const getAvailableCharacters = () => {

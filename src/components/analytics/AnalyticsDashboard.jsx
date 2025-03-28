@@ -34,8 +34,8 @@ const FilterContainer = styled.div`
 
 const FilterButton = styled(motion.button)`
   background: transparent;
-  border: 1px solid ${props => props.active ? props.theme.accent : props.theme.primary};
-  color: ${props => props.active ? props.theme.accent : props.theme.primary};
+  border: 1px solid ${props => props.$active ? props.theme.accent : props.theme.primary};
+  color: ${props => props.$active ? props.theme.accent : props.theme.primary};
   padding: 8px 16px;
   font-family: 'Orbitron', sans-serif;
   cursor: pointer;
@@ -43,7 +43,7 @@ const FilterButton = styled(motion.button)`
   border-radius: 4px;
   
   &:hover {
-    box-shadow: 0 0 10px ${props => props.active ? props.theme.accent + '60' : props.theme.primary + '60'};
+    box-shadow: 0 0 10px ${props => props.$active ? props.theme.accent + '60' : props.theme.primary + '60'};
   }
 `;
 
@@ -150,27 +150,52 @@ const AnalyticsDashboard = () => {
     
     if (type === 'focus') {
       csvContent = 'Date,Duration,Completed\n';
-      filteredData.forEach(session => {
-        csvContent += `${session.date},${session.duration},${session.completed}\n`;
-      });
+      if (filteredData && filteredData.length > 0) {
+        filteredData.forEach(session => {
+          csvContent += `${session.date},${session.duration},${session.completed ? 'Yes' : 'No'}\n`;
+        });
+      }
       filename = `focus-data-${timeRange}-${new Date().toISOString().split('T')[0]}.csv`;
     } else if (type === 'streak') {
       csvContent = 'Date,StreakCount\n';
-      focusData.streaks.history.forEach(streak => {
-        csvContent += `${streak.date},${streak.count}\n`;
-      });
+      if (focusData && focusData.streaks && focusData.streaks.history && focusData.streaks.history.length > 0) {
+        focusData.streaks.history.forEach(streak => {
+          csvContent += `${streak.date},${streak.count}\n`;
+        });
+      }
       filename = `streak-data-${timeRange}-${new Date().toISOString().split('T')[0]}.csv`;
     }
     
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Use window.Blob to explicitly reference the global Blob constructor
+    const blob = new window.Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+    
+    try {
+      // Create a temporary anchor element
+      const link = document.createElement('a');
+      
+      // Use a safer approach with a try-catch block
+      if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+        // For IE
+        window.navigator.msSaveOrOpenBlob(blob, filename);
+      } else {
+        // For other browsers
+        const url = window.URL.createObjectURL(blob);
+        link.href = url;
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        
+        // Clean up
+        setTimeout(() => {
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      console.error('Failed to export data. Please try again.');
+    }
   };
   
   return (
@@ -179,7 +204,7 @@ const AnalyticsDashboard = () => {
         <Title>Analytics</Title>
         <FilterContainer>
           <FilterButton 
-            active={timeRange === 'day'} 
+            $active={timeRange === 'day'} 
             onClick={() => setTimeRange('day')}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -187,7 +212,7 @@ const AnalyticsDashboard = () => {
             Day
           </FilterButton>
           <FilterButton 
-            active={timeRange === 'week'} 
+            $active={timeRange === 'week'} 
             onClick={() => setTimeRange('week')}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -195,7 +220,7 @@ const AnalyticsDashboard = () => {
             Week
           </FilterButton>
           <FilterButton 
-            active={timeRange === 'month'} 
+            $active={timeRange === 'month'} 
             onClick={() => setTimeRange('month')}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}

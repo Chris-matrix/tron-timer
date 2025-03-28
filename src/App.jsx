@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
 import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useData } from './context/DataContext';
-import { useAchievements } from './context/AchievementContext';
+import { useData } from './context/DataContext.jsx';
+import { useAchievements } from './context/AchievementContext.jsx';
 
 // Components
-import Timer from './components/timer/Timer';
-import AchievementList from './components/achievements/AchievementList';
-import AnalyticsDashboard from './components/analytics/AnalyticsDashboard';
-import ProgressOverview from './components/dashboard/ProgressOverview';
-import Settings from './components/settings/Settings';
+import Timer from './components/timer/Timer.jsx';
+import AchievementList from './components/achievements/AchievementList.jsx';
+import AnalyticsDashboard from './components/analytics/AnalyticsDashboard.jsx';
+import ProgressOverview from './components/dashboard/ProgressOverview.jsx';
+import Settings from './components/settings/Settings.jsx';
 
 // Global styles
 const GlobalStyle = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Roboto:wght@300;400;500&display=swap');
+  /* Font imports are handled in index.html */
   
   * {
     box-sizing: border-box;

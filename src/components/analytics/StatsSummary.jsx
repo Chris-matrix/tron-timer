@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
+import PropTypes from 'prop-types';
 import { motion } from 'framer-motion';
 import { useData } from '../../context/DataContext';
 import { useAchievements } from '../../context/AchievementContext';
@@ -59,8 +60,8 @@ const StatsSummary = ({ timeRange, dateRange }) => {
   const { focusData, getSessionsForDateRange } = useData();
   const { getAllAchievements } = useAchievements();
   
-  const sessions = getSessionsForDateRange(dateRange.startDate, dateRange.endDate);
-  const completedSessions = sessions.filter(s => s.completed);
+  const sessions = getSessionsForDateRange(dateRange?.startDate, dateRange?.endDate) || [];
+  const completedSessions = sessions.filter(s => s && s.completed);
   
   // Calculate statistics
   const totalSessions = sessions.length;
@@ -68,27 +69,38 @@ const StatsSummary = ({ timeRange, dateRange }) => {
     ? Math.round((completedSessions.length / totalSessions) * 100) 
     : 0;
   
-  const totalFocusTime = completedSessions.reduce((total, session) => total + session.duration, 0);
+  const totalFocusTime = completedSessions.reduce((total, session) => total + (session.duration || 0), 0);
   const averageFocusTime = completedSessions.length > 0 
     ? Math.round(totalFocusTime / completedSessions.length) 
     : 0;
   
-  const currentStreak = focusData.streaks.current;
+  const currentStreak = focusData?.streaks?.current || 0;
   
   // Get achievement stats
-  const allAchievements = getAllAchievements();
-  const unlockedAchievements = allAchievements.filter(a => a.unlocked).length;
-  const achievementPercentage = Math.round((unlockedAchievements / allAchievements.length) * 100);
+  const allAchievements = getAllAchievements() || [];
+  const unlockedAchievements = allAchievements.filter(a => a && a.unlocked).length;
+  const achievementPercentage = allAchievements.length > 0 
+    ? Math.round((unlockedAchievements / allAchievements.length) * 100)
+    : 0;
   
   // Format date range for display
   const formatDateRange = () => {
-    const start = new Date(dateRange.startDate).toLocaleDateString();
-    const end = new Date(dateRange.endDate).toLocaleDateString();
-    
-    if (timeRange === 'day') {
-      return `Today (${start})`;
-    } else {
-      return `${start} - ${end}`;
+    try {
+      if (!dateRange || !dateRange.startDate || !dateRange.endDate) {
+        return 'No date range selected';
+      }
+      
+      const start = new Date(dateRange.startDate).toLocaleDateString();
+      const end = new Date(dateRange.endDate).toLocaleDateString();
+      
+      if (timeRange === 'day') {
+        return `Today (${start})`;
+      } else {
+        return `${start} - ${end}`;
+      }
+    } catch (error) {
+      console.error('Error formatting date range:', error);
+      return 'Invalid date range';
     }
   };
   
@@ -164,6 +176,15 @@ const StatsSummary = ({ timeRange, dateRange }) => {
       </StatsGrid>
     </Container>
   );
+};
+
+// Add prop validation
+StatsSummary.propTypes = {
+  timeRange: PropTypes.string.isRequired,
+  dateRange: PropTypes.shape({
+    startDate: PropTypes.string.isRequired,
+    endDate: PropTypes.string.isRequired
+  }).isRequired
 };
 
 export default StatsSummary;

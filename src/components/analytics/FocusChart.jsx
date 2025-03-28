@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
+import PropTypes from 'prop-types';
 import {
   BarChart,
   Bar,
@@ -36,22 +37,6 @@ const CustomTooltip = styled.div`
   }
 `;
 
-// Helper function to format date based on time range
-const formatDate = (date, timeRange) => {
-  const d = new Date(date);
-  
-  switch (timeRange) {
-    case 'day':
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    case 'week':
-      return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
-    case 'month':
-      return d.getDate();
-    default:
-      return d.toLocaleDateString();
-  }
-};
-
 // Helper function to prepare data for the chart
 const prepareChartData = (sessions, timeRange, dateRange) => {
   if (!sessions || sessions.length === 0) {
@@ -69,7 +54,8 @@ const prepareChartData = (sessions, timeRange, dateRange) => {
         incomplete: 0
       }));
     } else if (timeRange === 'month') {
-      return Array(31).fill().map((_, i) => ({
+      const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+      return Array(daysInMonth).fill().map((_, i) => ({
         time: i + 1,
         completed: 0,
         incomplete: 0
@@ -87,13 +73,19 @@ const prepareChartData = (sessions, timeRange, dateRange) => {
     }));
     
     sessions.forEach(session => {
-      const sessionDate = new Date(session.date + 'T' + (session.time || '00:00:00'));
-      const hour = sessionDate.getHours();
-      
-      if (session.completed) {
-        hourlyData[hour].completed += session.duration;
-      } else {
-        hourlyData[hour].incomplete += session.duration;
+      try {
+        const sessionDate = new Date(session.date + 'T' + (session.time || '00:00:00'));
+        const hour = sessionDate.getHours();
+        
+        if (hour >= 0 && hour < 24) {
+          if (session.completed) {
+            hourlyData[hour].completed += session.duration || 0;
+          } else {
+            hourlyData[hour].incomplete += session.duration || 0;
+          }
+        }
+      } catch (error) {
+        console.error('Error processing session:', session, error);
       }
     });
     
@@ -107,13 +99,21 @@ const prepareChartData = (sessions, timeRange, dateRange) => {
     }));
     
     sessions.forEach(session => {
-      const sessionDate = new Date(session.date);
-      const day = sessionDate.getDay();
-      
-      if (session.completed) {
-        dailyData[day].completed += session.duration;
-      } else {
-        dailyData[day].incomplete += session.duration;
+      try {
+        const sessionDate = new Date(session.date);
+        if (!isNaN(sessionDate.getTime())) {
+          const day = sessionDate.getDay();
+          
+          if (day >= 0 && day < 7) {
+            if (session.completed) {
+              dailyData[day].completed += session.duration || 0;
+            } else {
+              dailyData[day].incomplete += session.duration || 0;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error processing session:', session, error);
       }
     });
     
@@ -121,7 +121,6 @@ const prepareChartData = (sessions, timeRange, dateRange) => {
   } else if (timeRange === 'month') {
     // Group by date for month view
     const startDate = new Date(dateRange.startDate);
-    const endDate = new Date(dateRange.endDate);
     const daysInMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate();
     
     const monthlyData = Array(daysInMonth).fill().map((_, i) => ({
@@ -131,15 +130,21 @@ const prepareChartData = (sessions, timeRange, dateRange) => {
     }));
     
     sessions.forEach(session => {
-      const sessionDate = new Date(session.date);
-      const day = sessionDate.getDate() - 1; // 0-indexed array
-      
-      if (day >= 0 && day < monthlyData.length) {
-        if (session.completed) {
-          monthlyData[day].completed += session.duration;
-        } else {
-          monthlyData[day].incomplete += session.duration;
+      try {
+        const sessionDate = new Date(session.date);
+        if (!isNaN(sessionDate.getTime())) {
+          const day = sessionDate.getDate() - 1; // 0-indexed array
+          
+          if (day >= 0 && day < monthlyData.length) {
+            if (session.completed) {
+              monthlyData[day].completed += session.duration || 0;
+            } else {
+              monthlyData[day].incomplete += session.duration || 0;
+            }
+          }
         }
+      } catch (error) {
+        console.error('Error processing session:', session, error);
       }
     });
     
@@ -152,7 +157,7 @@ const prepareChartData = (sessions, timeRange, dateRange) => {
 const FocusChart = ({ timeRange, dateRange }) => {
   const { getSessionsForDateRange } = useData();
   
-  const sessions = getSessionsForDateRange(dateRange.startDate, dateRange.endDate);
+  const sessions = getSessionsForDateRange(dateRange?.startDate, dateRange?.endDate) || [];
   const chartData = prepareChartData(sessions, timeRange, dateRange);
   
   // Custom tooltip component
@@ -223,6 +228,15 @@ const FocusChart = ({ timeRange, dateRange }) => {
       </ResponsiveContainer>
     </ChartContainer>
   );
+};
+
+// Add prop validation
+FocusChart.propTypes = {
+  timeRange: PropTypes.string.isRequired,
+  dateRange: PropTypes.shape({
+    startDate: PropTypes.string.isRequired,
+    endDate: PropTypes.string.isRequired
+  }).isRequired
 };
 
 export default FocusChart;
