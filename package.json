@@ -8,7 +8,9 @@
     "start": "webpack serve --mode development --open",
     "build": "webpack --mode production",
     "dev": "webpack serve --mode development",
-    "serve": "node server.js"
+    "serve": "node server.js",
+    "lint": "eslint src --ext .js,.jsx",
+    "lint:fix": "eslint src --ext .js,.jsx --fix"
   },
   "keywords": [
     "tron",
@@ -34,6 +36,10 @@
     "@babel/preset-react": "^7.26.3",
     "babel-loader": "^10.0.0",
     "css-loader": "^7.1.2",
+    "eslint": "^9.23.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-react": "^7.37.4",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "html-webpack-plugin": "^5.6.3",
     "style-loader": "^4.0.0",
     "webpack": "^5.98.0",
