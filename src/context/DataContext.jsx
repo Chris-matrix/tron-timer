@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import StorageManager from '../utils/StorageManager';
 
 // Create context
 const DataContext = createContext();
@@ -126,25 +127,102 @@ export const AVAILABLE_CHARACTERS = [
   { id: 'custom', name: 'Custom', description: 'Create your own identity' }
 ];
 
+// App version for storage versioning
+const APP_VERSION = '1.0.0';
+
+// Storage keys
+const STORAGE_KEYS = {
+  FOCUS_DATA: 'tron_focus_data',
+  SETTINGS: 'tron_settings',
+  SESSIONS: 'tron_sessions',
+  STATS: 'tron_stats'
+};
+
+// Default settings
+const DEFAULT_SETTINGS = {
+  theme: 'tron',
+  sound: 'digital',
+  notifications: true,
+  backgroundStyle: 'grid', // grid, codeRain, particles
+  musicYoutubeUrl: '',
+  focusDuration: 25,
+  shortBreakDuration: 5,
+  longBreakDuration: 15,
+  sessionsBeforeLongBreak: 4,
+  autoStartBreaks: false,
+  autoStartNextSession: false
+};
+
+// Default focus data structure
+const DEFAULT_FOCUS_DATA = {
+  settings: DEFAULT_SETTINGS,
+  sessions: [],
+  currentStreak: 0,
+  longestStreak: 0,
+  totalFocusMinutes: 0,
+  totalSessions: 0,
+  lastSessionDate: null
+};
+
+// Initialize the storage manager with our app version
+StorageManager.initialize({
+  version: APP_VERSION,
+  migrationStrategies: {
+    // Migration strategies for future versions
+  }
+});
+
+// Provider component
 export const DataProvider = ({ children }) => {
+  // State for focus data
   const [focusData, setFocusData] = useState(() => {
-    // Load data from localStorage if available
-    const savedData = localStorage.getItem('focusData');
-    return savedData ? JSON.parse(savedData) : initialData;
+    // Load focus data from storage or use default
+    try {
+      const storedData = StorageManager.getItem(STORAGE_KEYS.FOCUS_DATA);
+      return storedData || DEFAULT_FOCUS_DATA;
+    } catch (error) {
+      console.error('Error loading focus data:', error);
+      return DEFAULT_FOCUS_DATA;
+    }
   });
-  
-  // Save data to localStorage whenever it changes
+
+  // Update local storage when focus data changes
   useEffect(() => {
-    localStorage.setItem('focusData', JSON.stringify(focusData));
+    try {
+      StorageManager.setItem(STORAGE_KEYS.FOCUS_DATA, focusData);
+    } catch (error) {
+      console.error('Error saving focus data:', error);
+    }
   }, [focusData]);
-  
+
+  // Listen for storage changes from other tabs
+  useEffect(() => {
+    const handleStorageChange = (event) => {
+      if (event.key === STORAGE_KEYS.FOCUS_DATA) {
+        try {
+          setFocusData(event.newValue || DEFAULT_FOCUS_DATA);
+        } catch (error) {
+          console.error('Error handling storage change:', error);
+        }
+      }
+    };
+
+    // Subscribe to storage changes
+    StorageManager.subscribe(handleStorageChange);
+
+    // Unsubscribe when component unmounts
+    return () => {
+      StorageManager.unsubscribe(handleStorageChange);
+    };
+  }, []);
+
   // Add a new focus session
   const addSession = (session) => {
     setFocusData(prevData => {
       const newSessions = [...prevData.sessions, session];
       const totalTime = calculateTotalFocusTime(newSessions);
       const streakData = calculateStreaks(newSessions);
-      
+
       return {
         ...prevData,
         sessions: newSessions,
@@ -154,36 +232,36 @@ export const DataProvider = ({ children }) => {
       };
     });
   };
-  
+
   // Calculate total focus time from sessions
   const calculateTotalFocusTime = (sessions) => {
     return sessions.reduce((total, session) => {
       return total + (session.completed ? session.duration : 0);
     }, 0);
   };
-  
+
   // Calculate current and longest streaks
   const calculateStreaks = (sessions) => {
     if (sessions.length === 0) {
       return { current: 0, longest: 0, history: [] };
     }
-    
+
     // Get unique dates with completed sessions
     const dates = [...new Set(
       sessions
         .filter(session => session.completed)
         .map(session => session.date)
     )].sort();
-    
+
     if (dates.length === 0) {
       return { current: 0, longest: 0, history: [] };
     }
-    
+
     // Calculate current streak
     let currentStreak = 1;
     const today = new Date().toISOString().split('T')[0];
     const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-    
+
     // Check if the most recent date is today or yesterday
     const mostRecentDate = dates[dates.length - 1];
     if (mostRecentDate !== today && mostRecentDate !== yesterday) {
@@ -193,11 +271,11 @@ export const DataProvider = ({ children }) => {
       for (let i = dates.length - 2; i >= 0; i--) {
         const currentDate = new Date(dates[i + 1]);
         const prevDate = new Date(dates[i]);
-        
+
         // Check if dates are consecutive
         const diffTime = currentDate - prevDate;
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays === 1) {
           currentStreak++;
         } else {
@@ -205,19 +283,19 @@ export const DataProvider = ({ children }) => {
         }
       }
     }
-    
+
     // Calculate longest streak
     let longestStreak = 1;
     let tempStreak = 1;
-    
+
     for (let i = 1; i < dates.length; i++) {
       const currentDate = new Date(dates[i]);
       const prevDate = new Date(dates[i - 1]);
-      
+
       // Check if dates are consecutive
       const diffTime = currentDate - prevDate;
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
+
       if (diffDays === 1) {
         tempStreak++;
         longestStreak = Math.max(longestStreak, tempStreak);
@@ -225,44 +303,142 @@ export const DataProvider = ({ children }) => {
         tempStreak = 1;
       }
     }
-    
+
     // Calculate history
     const history = dates.map(date => {
       return { date, count: 1 }; // Initialize with count 1 for each date with completed sessions
     });
-    
+
     // Calculate consecutive streaks for history
     for (let i = 1; i < history.length; i++) {
       const currentDate = new Date(history[i].date);
-      const prevDate = new Date(history[i-1].date);
-      
+      const prevDate = new Date(history[i - 1].date);
+
       // Check if dates are consecutive
       const diffTime = currentDate - prevDate;
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
+
       if (diffDays === 1) {
-        history[i].count = history[i-1].count + 1;
+        history[i].count = history[i - 1].count + 1;
       }
     }
-    
+
     return {
       current: currentStreak,
       longest: longestStreak,
       history
     };
   };
-  
+
+  // Add a completed session
+  const addCompletedSession = useCallback((sessionData) => {
+    const now = new Date();
+    const newSession = {
+      ...sessionData,
+      completedAt: now.toISOString(),
+      id: Date.now()
+    };
+
+    setFocusData(prevData => {
+      // Check if this continues a streak (within 24 hours of last session)
+      let currentStreak = prevData.currentStreak;
+      let longestStreak = prevData.longestStreak;
+      let lastSessionDate = prevData.lastSessionDate;
+
+      if (sessionData.type === 'focus' && !sessionData.wasInterrupted) {
+        // If there's a previous session, check if it was within 24 hours
+        if (lastSessionDate) {
+          const lastDate = new Date(lastSessionDate);
+          const hoursDiff = (now - lastDate) / (1000 * 60 * 60);
+
+          if (hoursDiff <= 24) {
+            // Continue the streak
+            currentStreak += 1;
+          } else {
+            // Reset the streak
+            currentStreak = 1;
+          }
+        } else {
+          // First session ever
+          currentStreak = 1;
+        }
+
+        // Update longest streak if needed
+        if (currentStreak > longestStreak) {
+          longestStreak = currentStreak;
+        }
+
+        // Update last session date
+        lastSessionDate = now.toISOString();
+      }
+
+      // Calculate total focus minutes
+      const totalFocusMinutes = sessionData.type === 'focus' && !sessionData.wasInterrupted
+        ? prevData.totalFocusMinutes + sessionData.duration
+        : prevData.totalFocusMinutes;
+
+      // Calculate total completed sessions
+      const totalSessions = sessionData.type === 'focus' && !sessionData.wasInterrupted
+        ? prevData.totalSessions + 1
+        : prevData.totalSessions;
+
+      // Update sessions list
+      const updatedSessions = [newSession, ...prevData.sessions].slice(0, 100); // Keep only the last 100 sessions
+
+      // Store sessions separately for quicker access
+      try {
+        StorageManager.setItem(STORAGE_KEYS.SESSIONS, updatedSessions);
+      } catch (error) {
+        console.error('Error saving sessions:', error);
+      }
+
+      // Store stats separately for quicker access
+      const stats = {
+        currentStreak,
+        longestStreak,
+        totalFocusMinutes,
+        totalSessions,
+        lastSessionDate
+      };
+
+      try {
+        StorageManager.setItem(STORAGE_KEYS.STATS, stats);
+      } catch (error) {
+        console.error('Error saving stats:', error);
+      }
+
+      return {
+        ...prevData,
+        sessions: updatedSessions,
+        ...stats
+      };
+    });
+
+    return newSession;
+  }, []);
+
   // Update settings
-  const updateSettings = (newSettings) => {
-    setFocusData(prevData => ({
-      ...prevData,
-      settings: {
+  const updateSettings = useCallback((newSettings) => {
+    setFocusData(prevData => {
+      const updatedSettings = {
         ...prevData.settings,
         ...newSettings
+      };
+
+      // Also store settings separately for quicker access
+      try {
+        StorageManager.setItem(STORAGE_KEYS.SETTINGS, updatedSettings);
+      } catch (error) {
+        console.error('Error saving settings:', error);
       }
-    }));
-  };
-  
+
+      return {
+        ...prevData,
+        settings: updatedSettings
+      };
+    });
+  }, []);
+
   // Toggle theme
   const toggleTheme = () => {
     setFocusData(prevData => {
@@ -271,7 +447,7 @@ export const DataProvider = ({ children }) => {
       const currentIndex = themeKeys.indexOf(currentThemeId);
       const nextIndex = (currentIndex + 1) % themeKeys.length;
       const nextThemeId = themeKeys[nextIndex];
-      
+
       return {
         ...prevData,
         settings: {
@@ -281,66 +457,72 @@ export const DataProvider = ({ children }) => {
       };
     });
   };
-  
+
   // Get daily progress as percentage
   const getDailyProgress = (date) => {
     const sessionsForDate = focusData.sessions.filter(
       session => session.date === date && session.completed
     );
-    
+
     const totalMinutes = sessionsForDate.reduce(
       (total, session) => total + session.duration, 0
     );
-    
+
     return Math.min(100, (totalMinutes / focusData.settings.dailyGoal) * 100);
   };
-  
+
   // Get weekly progress as percentage
   const getWeeklyProgress = () => {
     const today = new Date();
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay()); // Start from Sunday
     startOfWeek.setHours(0, 0, 0, 0);
-    
+
     const sessionsThisWeek = focusData.sessions.filter(session => {
       const sessionDate = new Date(session.date);
       return sessionDate >= startOfWeek && session.completed;
     });
-    
+
     const totalMinutes = sessionsThisWeek.reduce(
       (total, session) => total + session.duration, 0
     );
-    
+
     return Math.min(100, (totalMinutes / focusData.settings.weeklyGoal) * 100);
   };
-  
+
   // Get sessions for a specific date range
   const getSessionsForDateRange = (startDate, endDate) => {
     return focusData.sessions.filter(session => {
       return session.date >= startDate && session.date <= endDate;
     });
   };
-  
+
   const getAvailableThemes = () => {
     return AVAILABLE_THEMES;
   };
-  
+
   const getAvailableCharacters = () => {
     return AVAILABLE_CHARACTERS;
   };
-  
+
   const getCurrentTheme = () => {
     return AVAILABLE_THEMES[focusData.settings.theme] || AVAILABLE_THEMES.tron;
   };
 
-  // Reset all user data
-  const resetData = () => {
-    setFocusData({
-      ...initialData,
-      settings: focusData.settings // Preserve user settings
-    });
-    localStorage.removeItem('focusData');
-  };
+  // Clear all data and reset to defaults
+  const clearAllData = useCallback(() => {
+    try {
+      // Clear all storage keys
+      Object.values(STORAGE_KEYS).forEach(key => {
+        StorageManager.removeItem(key);
+      });
+
+      // Reset state to defaults
+      setFocusData(DEFAULT_FOCUS_DATA);
+    } catch (error) {
+      console.error('Error clearing data:', error);
+    }
+  }, []);
 
   return (
     <DataContext.Provider value={{
@@ -354,7 +536,7 @@ export const DataProvider = ({ children }) => {
       getAvailableThemes,
       getAvailableCharacters,
       getCurrentTheme,
-      resetData
+      clearAllData // Use clearAllData instead of resetData
     }}>
       {children}
     </DataContext.Provider>

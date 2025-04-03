@@ -108,7 +108,7 @@ const AchievementList = () => {
         <Title>Achievements</Title>
         <FilterContainer>
           <FilterButton 
-            active={filter === 'all'} 
+            data-active={filter === 'all' ? 'true' : 'false'} 
             onClick={() => setFilter('all')}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -116,7 +116,7 @@ const AchievementList = () => {
             All
           </FilterButton>
           <FilterButton 
-            active={filter === 'unlocked'} 
+            data-active={filter === 'unlocked' ? 'true' : 'false'} 
             onClick={() => setFilter('unlocked')}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -124,7 +124,7 @@ const AchievementList = () => {
             Unlocked
           </FilterButton>
           <FilterButton 
-            active={filter === 'locked'} 
+            data-active={filter === 'locked' ? 'true' : 'false'} 
             onClick={() => setFilter('locked')}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}

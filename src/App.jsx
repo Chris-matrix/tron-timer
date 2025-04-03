@@ -1,15 +1,12 @@
 import React, { useState } from 'react';
 import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useData } from './context/DataContext.jsx';
-import { useAchievements } from './context/AchievementContext.jsx';
-
-// Components
-import Timer from './components/timer/Timer.jsx';
-import AchievementList from './components/achievements/AchievementList.jsx';
-import AnalyticsDashboard from './components/analytics/AnalyticsDashboard.jsx';
-import ProgressOverview from './components/dashboard/ProgressOverview.jsx';
-import Settings from './components/settings/Settings.jsx';
+import { useData, AVAILABLE_THEMES } from './context/DataContext';
+import TimerContainer from './components/timer/TimerContainer';
+import ProgressOverview from './components/dashboard/ProgressOverview';
+import AchievementList from './components/achievements/AchievementList';
+import AnalyticsDashboard from './components/analytics/AnalyticsDashboard';
+import Settings from './components/settings/Settings';
 
 // Global styles
 const GlobalStyle = createGlobalStyle`
@@ -220,7 +217,7 @@ const App = () => {
                 transition={{ duration: 0.3 }}
                 style={{ width: '100%', display: 'flex', justifyContent: 'center' }}
               >
-                <Timer />
+                <TimerContainer />
               </motion.div>
             )}
             

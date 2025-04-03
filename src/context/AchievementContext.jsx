@@ -84,18 +84,24 @@ export const AchievementProvider = ({ children }) => {
 
   // Check if any new achievements have been unlocked
   const checkAchievements = () => {
+    // Guard clause to ensure focusData is available
+    if (!focusData) {
+      console.warn('Focus data not available for achievement check');
+      return;
+    }
+    
     const newUnlocked = [];
     
     // Check Focus Master achievements (based on total focus time)
-    const totalFocusHours = focusData.totalFocusTime / 60; // Convert minutes to hours
+    const totalFocusHours = (focusData.totalFocusTime || 0) / 60; // Convert minutes to hours
     checkAchievementType('focusMaster', totalFocusHours, newUnlocked);
     
     // Check Streak Champion achievements (based on current streak)
-    const currentStreak = focusData.streaks.current;
+    const currentStreak = focusData.streaks?.current || 0;
     checkAchievementType('streakChampion', currentStreak, newUnlocked);
     
     // Check Consistency King achievements (based on completed sessions)
-    const completedSessions = focusData.sessions.filter(s => s.completed).length;
+    const completedSessions = (focusData.sessions || []).filter(s => s?.completed).length;
     checkAchievementType('consistencyKing', completedSessions, newUnlocked);
     
     // If new achievements were unlocked, update state
@@ -183,34 +189,46 @@ export const AchievementProvider = ({ children }) => {
 
   // Get achievement progress
   const getAchievementProgress = (typeId, level) => {
+    // Guard clause to ensure focusData is available
+    if (!focusData) {
+      console.warn('Focus data not available for achievement progress calculation');
+      return { current: 0, required: 0, percentage: 0 };
+    }
+    
     const type = achievementTypes[typeId];
-    if (!type) return 0;
+    if (!type) return { current: 0, required: 0, percentage: 0 };
     
     const tier = type.tiers.find(t => t.level === level);
-    if (!tier) return 0;
+    if (!tier) return { current: 0, required: 0, percentage: 0 };
     
     let currentValue = 0;
     
     // Determine current value based on achievement type
     switch (typeId) {
       case 'focusMaster':
-        currentValue = focusData.totalFocusTime / 60; // Convert minutes to hours
+        currentValue = (focusData.totalFocusTime || 0) / 60; // Convert minutes to hours
         break;
       case 'streakChampion':
-        currentValue = focusData.streaks.current;
+        currentValue = focusData.streaks?.current || 0;
         break;
       case 'consistencyKing':
-        currentValue = focusData.sessions.filter(s => s.completed).length;
+        currentValue = (focusData.sessions || []).filter(s => s?.completed).length;
         break;
       case 'focusNinja':
         // Assuming we have a way to track uninterrupted sessions
-        currentValue = focusData.sessions.filter(s => s.completed && !s.interrupted).length;
+        currentValue = (focusData.sessions || []).filter(s => s?.completed && !s?.interrupted).length;
         break;
       case 'earlyBird':
         // Assuming we have a way to track morning sessions
-        currentValue = focusData.sessions.filter(s => {
-          const sessionDate = new Date(s.date + 'T' + (s.startTime || '08:00:00'));
-          return s.completed && sessionDate.getHours() < 10; // Before 10 AM
+        currentValue = (focusData.sessions || []).filter(s => {
+          if (!s?.date || !s?.completed) return false;
+          try {
+            const sessionDate = new Date(s.date + 'T' + (s.startTime || '08:00:00'));
+            return sessionDate.getHours() < 10; // Before 10 AM
+          } catch (error) {
+            console.warn('Error parsing session date:', error);
+            return false;
+          }
         }).length;
         break;
       default:

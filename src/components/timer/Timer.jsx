@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import { useData, AVAILABLE_THEMES } from '../../context/DataContext';
 import { useAchievements } from '../../context/AchievementContext';
 import TimerSounds from './TimerSounds';
+import TimerManager from '../../utils/TimerManager';
+import NotificationManager from '../../utils/NotificationManager';
 import PropTypes from 'prop-types';
 
 // TRON-inspired animations
@@ -46,7 +48,11 @@ const circuitPulse = keyframes`
   100% { stroke-width: 1; opacity: 0.3; }
 `;
 
-const TimerContainer = styled.div`
+const TimerContainer = styled.div.attrs(props => ({
+  style: {
+    // Dynamic styles that change frequently can go here
+  }
+}))`
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -64,7 +70,7 @@ const TimerContainer = styled.div`
     right: 0;
     bottom: 0;
     background: ${props => {
-      if (props.backgroundStyle === 'grid' || !props.backgroundStyle) {
+      if (props.$backgroundStyle === 'grid' || !props.$backgroundStyle) {
         return `
           linear-gradient(to right, ${props.theme?.grid || '#1d2c3f'} 1px, transparent 1px),
           linear-gradient(to bottom, ${props.theme?.grid || '#1d2c3f'} 1px, transparent 1px)
@@ -75,7 +81,7 @@ const TimerContainer = styled.div`
     background-size: 30px 30px;
     opacity: 0.15;
     z-index: -1;
-    animation: ${props => props.backgroundStyle === 'grid' ? gridLines : 'none'} 8s infinite;
+    animation: ${props => props.$backgroundStyle === 'grid' ? gridLines : 'none'} 8s infinite;
   }
 `;
 
@@ -88,7 +94,7 @@ const DataFlowLines = styled.svg`
   height: 100vh;
   z-index: -1;
   opacity: 0.4;
-  display: ${props => props.backgroundStyle === 'minimal' ? 'none' : 'block'};
+  display: ${props => props.$backgroundStyle === 'minimal' ? 'none' : 'block'};
 `;
 
 const DataLine = styled.path`
@@ -100,14 +106,17 @@ const DataLine = styled.path`
 `;
 
 // Circuit background
-const CircuitBackground = styled.div`
+const CircuitBackground = styled.div.attrs(props => ({
+  style: {
+    display: props.$backgroundStyle === 'circuits' ? 'block' : 'none'
+  }
+}))`
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
   z-index: -1;
-  display: ${props => props.backgroundStyle === 'circuits' ? 'block' : 'none'};
   
   svg {
     width: 100%;
@@ -123,7 +132,11 @@ const CircuitBackground = styled.div`
   }
 `;
 
-const CircuitLines = styled.svg`
+const CircuitLines = styled.svg.attrs(props => ({
+  style: {
+    display: props.$backgroundStyle === 'circuits' ? 'block' : 'none'
+  }
+}))`
   position: fixed;
   top: 0;
   left: 0;
@@ -131,12 +144,14 @@ const CircuitLines = styled.svg`
   height: 100vh;
   z-index: -1;
   opacity: 0.3;
-  display: ${props => props.backgroundStyle === 'circuits' ? 'block' : 'none'};
 `;
 
-const CircuitLine = styled.path`
+const CircuitLine = styled.path.attrs(props => ({
+  style: {
+    stroke: props.theme?.primary || '#00f6ff'
+  }
+}))`
   fill: none;
-  stroke: ${props => props.theme?.primary || '#00f6ff'};
   stroke-width: 1.5;
   stroke-linecap: round;
   animation: ${circuitPulse} ${props => 3 + Math.random() * 5}s ease-in-out infinite;
@@ -150,7 +165,11 @@ const CircuitNode = styled.circle`
 `;
 
 // Code rain effect
-const CodeRainContainer = styled.div`
+const CodeRainContainer = styled.div.attrs(props => ({
+  style: {
+    display: props.$backgroundStyle === 'code' ? 'block' : 'none'
+  }
+}))`
   position: fixed;
   top: 0;
   left: 0;
@@ -158,7 +177,6 @@ const CodeRainContainer = styled.div`
   height: 100vh;
   z-index: -1;
   overflow: hidden;
-  display: ${props => props.backgroundStyle === 'code' ? 'block' : 'none'};
 `;
 
 const CodeColumn = styled.div`
@@ -182,7 +200,7 @@ const YouTubePlayerContainer = styled.div`
   width: 200px;
   height: 40px;
   z-index: 10;
-  display: ${props => props.url ? 'block' : 'none'};
+  display: ${props => props.$url ? 'block' : 'none'};
   background: rgba(0, 0, 0, 0.5);
   border-radius: 5px;
   padding: 5px;
@@ -278,22 +296,46 @@ const Notification = styled(motion.div)`
 
 const Timer = ({ session = {}, onComplete = () => {}, onPause = () => {}, onResume = () => {}, onReset = () => {} }) => {
   const { focusData } = useData();
-  const currentThemeId = focusData.settings.theme || 'tron';
+  const currentThemeId = focusData?.settings?.theme || 'tron';
   const theme = AVAILABLE_THEMES[currentThemeId] || AVAILABLE_THEMES.tron;
-  const backgroundStyle = focusData.settings.backgroundStyle || 'grid';
-  const musicYoutubeUrl = focusData.settings.musicYoutubeUrl || '';
+  const backgroundStyle = focusData?.settings?.backgroundStyle || 'grid';
+  const musicYoutubeUrl = focusData?.settings?.musicYoutubeUrl || '';
   
-  const duration = session?.duration || 25; // Default to 25 minutes if not provided
+  // Get session type first
   const sessionType = session?.type || 'focus'; // Default to focus session
+  
+  // Get duration from settings based on session type
+  let defaultDuration = 25;
+  if (sessionType === 'focus' && focusData?.settings?.focusDuration) {
+    defaultDuration = focusData.settings.focusDuration;
+  } else if (sessionType === 'shortBreak' && focusData?.settings?.shortBreakDuration) {
+    defaultDuration = focusData.settings.shortBreakDuration;
+  } else if (sessionType === 'longBreak' && focusData?.settings?.longBreakDuration) {
+    defaultDuration = focusData.settings.longBreakDuration;
+  }
+  
+  const duration = session?.duration || defaultDuration; // Use settings-based default if not provided
   
   const [timeLeft, setTimeLeft] = useState(duration * 60);
   const [isActive, setIsActive] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [wasInterrupted, setWasInterrupted] = useState(false);
+  const timerRef = useRef(null);
   
   // Show notification
   const showNotification = useCallback((message) => {
-    console.log(message);
-  }, []);
+    // Use the NotificationManager to show notifications
+    const soundUrl = focusData?.settings?.sound ? TimerSounds.getSoundUrl(focusData.settings.sound) : null;
+    
+    NotificationManager.notify(message, {
+      title: 'TRON Focus Timer',
+      sound: soundUrl,
+      showBrowser: focusData?.settings?.notifications,
+      showInApp: true
+    }).catch(error => {
+      console.error('Notification error:', error);
+    });
+  }, [focusData?.settings?.notifications, focusData?.settings?.sound]);
   
   // Extract YouTube video ID
   const getYoutubeVideoId = useCallback((url) => {
@@ -308,26 +350,25 @@ const Timer = ({ session = {}, onComplete = () => {}, onPause = () => {}, onResu
   // Handle timer complete
   const handleTimerComplete = useCallback(() => {
     setIsActive(false);
+    setIsPaused(false);
     
     // Show notification
-    if (focusData.settings.notifications) {
+    if (focusData?.settings?.notifications) {
       showNotification(`${sessionType === 'focus' ? 'FOCUS SESSION' : 'BREAK'} completed!`);
-      
-      // Browser notification
-      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-        try {
-          new Notification('TRON Focus Timer', {
-            body: `${sessionType === 'focus' ? 'FOCUS SESSION' : 'BREAK'} completed!`,
-            icon: '/favicon.ico'
-          });
-        } catch {
-          // Ignore notification errors
-        }
-      }
     }
     
-    onComplete();
-  }, [focusData.settings.notifications, sessionType, onComplete, showNotification]);
+    // Play sound if enabled
+    if (focusData?.settings?.sound) {
+      TimerSounds.play(focusData.settings.sound);
+    }
+    
+    // Call the onComplete callback with interruption status
+    onComplete({
+      wasInterrupted: timerRef.current ? timerRef.current.wasInterrupted() : wasInterrupted,
+      sessionType,
+      duration
+    });
+  }, [focusData?.settings?.notifications, focusData?.settings?.sound, sessionType, duration, onComplete, showNotification, wasInterrupted]);
   
   // Generate random code characters for the code rain effect
   const generateRandomCode = () => {
@@ -399,79 +440,178 @@ const Timer = ({ session = {}, onComplete = () => {}, onPause = () => {}, onResu
   
   // Request notification permission
   useEffect(() => {
-    if (focusData.settings.notifications && typeof Notification !== 'undefined') {
-      if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-        try {
-          Notification.requestPermission();
-        } catch {
-          // Ignore errors - Notification API might not be supported
-          console.log('Notification API not supported in this environment');
-        }
+    if (focusData?.settings?.notifications) {
+      NotificationManager.requestNotificationPermission()
+        .catch(error => {
+          console.log('Notification permission error:', error);
+        });
+    }
+  }, [focusData?.settings?.notifications]);
+  
+  // Handle timer interruption
+  const handleInterruption = useCallback(() => {
+    setWasInterrupted(true);
+  }, []);
+  
+  // Initialize the timer
+  useEffect(() => {
+    // Create a new timer
+    timerRef.current = TimerManager.createCountdownTimer({
+      duration: timeLeft,
+      onTick: (remaining) => {
+        setTimeLeft(remaining);
+      },
+      onComplete: handleTimerComplete,
+      onInterruption: handleInterruption
+    });
+    
+    // Start the timer if it should be active
+    if (isActive && !isPaused) {
+      timerRef.current.start();
+    }
+    
+    // Clean up the timer when the component unmounts
+    return () => {
+      if (timerRef.current) {
+        timerRef.current.destroy();
+      }
+    };
+  }, [handleTimerComplete, handleInterruption, timeLeft]);
+  
+  // Update timer when settings change
+  useEffect(() => {
+    // Get the appropriate duration based on session type and settings
+    let newDuration = duration;
+    if (sessionType === 'focus' && focusData?.settings?.focusDuration) {
+      newDuration = focusData.settings.focusDuration;
+    } else if (sessionType === 'shortBreak' && focusData?.settings?.shortBreakDuration) {
+      newDuration = focusData.settings.shortBreakDuration;
+    } else if (sessionType === 'longBreak' && focusData?.settings?.longBreakDuration) {
+      newDuration = focusData.settings.longBreakDuration;
+    }
+    
+    // Only update if the timer is not active and the duration has changed
+    if (!isActive && newDuration !== duration) {
+      // Reset the timer with the new duration
+      setTimeLeft(newDuration * 60);
+      
+      if (timerRef.current) {
+        timerRef.current.reset(newDuration * 60);
       }
     }
-  }, [focusData.settings.notifications]);
+  }, [focusData?.settings, sessionType, duration, isActive]);
   
-  // Timer logic
+  // Update timer state when isActive or isPaused changes
   useEffect(() => {
-    let interval = null;
+    if (!timerRef.current) return;
     
     if (isActive && !isPaused) {
-      interval = setInterval(() => {
-        setTimeLeft(prevTimeLeft => {
-          if (prevTimeLeft <= 1) {
-            clearInterval(interval);
-            handleTimerComplete();
-            return 0;
-          }
-          return prevTimeLeft - 1;
-        });
-      }, 1000);
-    } else {
-      clearInterval(interval);
+      timerRef.current.start();
+    } else if (isPaused) {
+      timerRef.current.pause();
+    } else if (!isActive) {
+      timerRef.current.stop();
     }
-    
-    return () => clearInterval(interval);
-  }, [isActive, isPaused, handleTimerComplete]);
+  }, [isActive, isPaused]);
   
   // Start timer
   const startTimer = () => {
     setIsActive(true);
     setIsPaused(false);
+    setWasInterrupted(false);
+    
+    if (timerRef.current) {
+      timerRef.current.start();
+    }
+    
+    // Preload the completion sound
+    if (focusData?.settings?.sound) {
+      const soundUrl = TimerSounds.getSoundUrl(focusData.settings.sound);
+      NotificationManager.preloadSound(soundUrl);
+    }
   };
   
   // Pause timer
   const pauseTimer = () => {
     setIsPaused(true);
+    
+    if (timerRef.current) {
+      timerRef.current.pause();
+    }
+    
+    // Call the onPause callback
+    onPause();
   };
   
   // Resume timer
   const resumeTimer = () => {
     setIsPaused(false);
+    
+    if (timerRef.current) {
+      timerRef.current.resume();
+    }
+    
+    // Call the onResume callback
+    onResume();
   };
   
   // Reset timer
   const resetTimer = () => {
     setIsActive(false);
     setIsPaused(false);
-    setTimeLeft(duration * 60);
+    setWasInterrupted(false);
+    
+    if (timerRef.current) {
+      timerRef.current.reset(duration * 60);
+    } else {
+      setTimeLeft(duration * 60);
+    }
+    
+    // Call the onReset callback
+    onReset();
   };
   
   // Skip current session
   const skipSession = () => {
-    handleTimerComplete();
+    // Stop the timer first
+    if (timerRef.current) {
+      timerRef.current.stop();
+    }
+    
+    // Set timer state
+    setIsActive(false);
+    setIsPaused(false);
+    
+    // Play sound if enabled (directly using NotificationManager to avoid TimerSounds issue)
+    if (focusData?.settings?.sound) {
+      const soundUrl = `/sounds/${focusData.settings.sound === 'digital' ? 'digital-alarm' : focusData.settings.sound}.mp3`;
+      NotificationManager.playSound(soundUrl).catch(error => {
+        console.warn('Error playing skip sound:', error);
+      });
+    }
+    
+    // Call the onComplete callback with interruption status
+    onComplete({
+      wasInterrupted: false,
+      sessionType,
+      duration
+    });
   };
   
   // Format time as MM:SS
   const formatTime = (seconds) => {
+    if (typeof seconds !== 'number' || isNaN(seconds)) {
+      return '00:00';
+    }
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
   
   return (
-    <TimerContainer backgroundStyle={backgroundStyle} theme={theme}>
+    <TimerContainer $backgroundStyle={backgroundStyle} theme={theme}>
       {/* Add TRON-inspired data flow lines */}
-      <DataFlowLines viewBox="0 0 1000 1000" backgroundStyle={backgroundStyle}>
+      <DataFlowLines viewBox="0 0 1000 1000" $backgroundStyle={backgroundStyle}>
         <DataLine d="M 50,50 C 200,300 800,700 950,950" theme={theme} />
         <DataLine d="M 950,50 C 800,300 200,700 50,950" theme={theme} />
         <DataLine d="M 500,0 C 500,300 500,700 500,1000" theme={theme} />
@@ -481,7 +621,7 @@ const Timer = ({ session = {}, onComplete = () => {}, onPause = () => {}, onResu
       </DataFlowLines>
       
       {/* Circuit background */}
-      <CircuitLines viewBox="0 0 1000 1000" backgroundStyle={backgroundStyle}>
+      <CircuitLines viewBox="0 0 1000 1000" $backgroundStyle={backgroundStyle}>
         {circuitData.paths.map((path, index) => (
           <CircuitLine key={`path-${index}`} d={path} theme={theme} />
         ))}
@@ -491,7 +631,7 @@ const Timer = ({ session = {}, onComplete = () => {}, onPause = () => {}, onResu
       </CircuitLines>
       
       {/* Code rain effect */}
-      <CodeRainContainer backgroundStyle={backgroundStyle}>
+      <CodeRainContainer $backgroundStyle={backgroundStyle}>
         {codeColumns.map(column => (
           <CodeColumn 
             key={column.id} 
@@ -521,7 +661,7 @@ const Timer = ({ session = {}, onComplete = () => {}, onPause = () => {}, onResu
             stroke={theme.primary}
             strokeWidth="10"
             strokeDasharray={2 * Math.PI * 120}
-            strokeDashoffset={2 * Math.PI * 120 * (1 - (timeLeft / (duration * 60)))}
+            strokeDashoffset={2 * Math.PI * 120 * (1 - ((timeLeft || 0) / (duration * 60 || 1)))}
             strokeLinecap="round"
             transform="rotate(-90 125 125)"
           />
@@ -540,7 +680,7 @@ const Timer = ({ session = {}, onComplete = () => {}, onPause = () => {}, onResu
       
       {/* YouTube player */}
       {youtubeVideoId && (
-        <YouTubePlayerContainer url={musicYoutubeUrl}>
+        <YouTubePlayerContainer $url={musicYoutubeUrl}>
           <iframe
             width="100%"
             height="100%"
@@ -593,6 +733,7 @@ const Timer = ({ session = {}, onComplete = () => {}, onPause = () => {}, onResu
           onClick={skipSession}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
+          data-active="false"
         >
           Skip
         </TimerButton>

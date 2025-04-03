@@ -153,9 +153,13 @@ const ProgressOverview = () => {
   // Get today's date
   const today = new Date().toISOString().split('T')[0];
   
-  // Calculate progress
-  const dailyProgress = getDailyProgress(today);
-  const weeklyProgress = getWeeklyProgress();
+  // Calculate progress with validation to prevent NaN
+  const dailyProgress = focusData ? getDailyProgress(today) : 0;
+  const weeklyProgress = focusData ? getWeeklyProgress() : 0;
+  
+  // Ensure progress values are valid numbers
+  const validDailyProgress = isNaN(dailyProgress) ? 0 : dailyProgress;
+  const validWeeklyProgress = isNaN(weeklyProgress) ? 0 : weeklyProgress;
   
   // Get achievement stats
   const allAchievements = getAllAchievements();
@@ -177,29 +181,29 @@ const ProgressOverview = () => {
             <CardTitle>Daily Focus Goal</CardTitle>
             <ProgressBarContainer>
               <ProgressBar 
-                $progress={dailyProgress}
+                $progress={validDailyProgress}
                 initial={{ width: 0 }}
-                animate={{ width: `${dailyProgress}%` }}
+                animate={{ width: `${validDailyProgress}%` }}
                 transition={{ duration: 1, ease: "easeOut" }}
               />
             </ProgressBarContainer>
             <ProgressText>
               <span>Today's Progress</span>
-              <span>{Math.round(dailyProgress)}%</span>
+              <span>{isNaN(dailyProgress) ? '0' : Math.round(dailyProgress)}%</span>
             </ProgressText>
             
             <CardTitle>Weekly Focus Goal</CardTitle>
             <ProgressBarContainer>
               <ProgressBar 
-                $progress={weeklyProgress}
+                $progress={validWeeklyProgress}
                 initial={{ width: 0 }}
-                animate={{ width: `${weeklyProgress}%` }}
+                animate={{ width: `${validWeeklyProgress}%` }}
                 transition={{ duration: 1, ease: "easeOut" }}
               />
             </ProgressBarContainer>
             <ProgressText>
               <span>This Week's Progress</span>
-              <span>{Math.round(weeklyProgress)}%</span>
+              <span>{isNaN(weeklyProgress) ? '0' : Math.round(weeklyProgress)}%</span>
             </ProgressText>
             
             <CardTitle>Achievement Progress</CardTitle>
@@ -221,7 +225,7 @@ const ProgressOverview = () => {
                 whileHover={{ scale: 1.05 }}
                 transition={{ duration: 0.2 }}
               >
-                <StatValue>{focusData.totalFocusTime}</StatValue>
+                <StatValue>{focusData && focusData.totalFocusTime ? focusData.totalFocusTime : 0}</StatValue>
                 <StatLabel>Total Focus Minutes</StatLabel>
               </StatCard>
               
@@ -229,7 +233,7 @@ const ProgressOverview = () => {
                 whileHover={{ scale: 1.05 }}
                 transition={{ duration: 0.2 }}
               >
-                <StatValue>{focusData.streaks.current}</StatValue>
+                <StatValue>{focusData && focusData.streaks ? focusData.streaks.current || 0 : 0}</StatValue>
                 <StatLabel>Current Streak</StatLabel>
               </StatCard>
               
@@ -237,7 +241,7 @@ const ProgressOverview = () => {
                 whileHover={{ scale: 1.05 }}
                 transition={{ duration: 0.2 }}
               >
-                <StatValue>{focusData.sessions.filter(s => s.completed).length}</StatValue>
+                <StatValue>{focusData && focusData.sessions ? focusData.sessions.filter(s => s.completed).length : 0}</StatValue>
                 <StatLabel>Completed Sessions</StatLabel>
               </StatCard>
               
@@ -245,7 +249,7 @@ const ProgressOverview = () => {
                 whileHover={{ scale: 1.05 }}
                 transition={{ duration: 0.2 }}
               >
-                <StatValue>{focusData.streaks.longest}</StatValue>
+                <StatValue>{focusData && focusData.streaks ? focusData.streaks.longest || 0 : 0}</StatValue>
                 <StatLabel>Longest Streak</StatLabel>
               </StatCard>
             </StatsGrid>
