@@ -128,13 +128,45 @@ export const AchievementProvider = ({ children }) => {
     const completedSessions = (focusData.sessions || []).filter(s => s?.completed).length;
     checkAchievementType('consistencyKing', completedSessions, newUnlocked);
     
-    // If new achievements were unlocked, update state
+    // Check Focus Ninja achievements (based on uninterrupted sessions)
+    const uninterruptedSessions = focusData.uninterruptedSessions || 0;
+    checkAchievementType('focusNinja', uninterruptedSessions, newUnlocked);
+    
+    // Check Early Bird achievements (based on morning sessions)
+    const morningSessions = (focusData.sessions || []).filter(s => {
+      if (!s?.date || !s?.completed) return false;
+      try {
+        const sessionDate = new Date(s.date + 'T' + (s.startTime || '08:00:00'));
+        return sessionDate.getHours() < 10; // Before 10 AM
+      } catch (error) {
+        console.warn('Error parsing session date:', error);
+        return false;
+      }
+    }).length;
+    checkAchievementType('earlyBird', morningSessions, newUnlocked);
+    
+    // If new achievements were unlocked, update state and show notifications
     if (newUnlocked.length > 0) {
-      setAchievements(prev => ({
-        unlocked: [...prev.unlocked, ...newUnlocked],
-        recent: [...newUnlocked, ...prev.recent].slice(0, 5), // Keep only the 5 most recent
-        notifications: [...newUnlocked, ...prev.notifications]
-      }));
+      setAchievements(prev => {
+        // Mark new achievements as unclaimed by default
+        const markedNewUnlocked = newUnlocked.map(achievement => ({
+          ...achievement,
+          claimed: false,
+          timestamp: new Date().toISOString()
+        }));
+        
+        return {
+          unlocked: [...prev.unlocked, ...markedNewUnlocked],
+          recent: [...markedNewUnlocked, ...prev.recent].slice(0, 5), // Keep only the 5 most recent
+          notifications: [...markedNewUnlocked, ...prev.notifications]
+        };
+      });
+      
+      // Show on-screen notifications for each new achievement
+      newUnlocked.forEach(achievement => {
+        // This will trigger the UI notification
+        showAchievementNotification(achievement);
+      });
     }
   }, [focusData, checkAchievementType]);
   
@@ -173,10 +205,6 @@ export const AchievementProvider = ({ children }) => {
     
     return wasUninterrupted;
   };
-
-
-
-
 
   // Dismiss a notification
   const dismissNotification = (notificationId) => {
@@ -281,6 +309,44 @@ export const AchievementProvider = ({ children }) => {
     };
   };
 
+  // Claim an achievement reward
+  const claimAchievement = (achievementId) => {
+    setAchievements(prev => {
+      // Find the achievement in the unlocked list
+      const achievement = prev.unlocked.find(a => a.id === achievementId);
+      
+      if (!achievement) return prev;
+      
+      // Mark the achievement as claimed
+      const updatedUnlocked = prev.unlocked.map(a => 
+        a.id === achievementId ? { ...a, claimed: true } : a
+      );
+      
+      // Add a notification that the reward was claimed
+      const claimNotification = {
+        id: `claim_${achievementId}_${Date.now()}`,
+        type: 'claim',
+        title: `Reward Claimed!`,
+        message: `You've claimed the ${achievement.reward} reward from ${achievement.title} Level ${achievement.level}!`,
+        icon: achievement.icon,
+        timestamp: new Date().toISOString()
+      };
+      
+      return {
+        ...prev,
+        unlocked: updatedUnlocked,
+        notifications: [...prev.notifications, claimNotification]
+      };
+    });
+  };
+
+  // Show achievement notification on screen
+  const showAchievementNotification = (achievement) => {
+    // This function will be used by the UI component to display the notification
+    console.log('Achievement unlocked:', achievement);
+    // The actual UI implementation will be in a separate component
+  };
+
   // The value that will be available to consumers of this context
   const value = {
     achievements,
@@ -289,7 +355,9 @@ export const AchievementProvider = ({ children }) => {
     clearAllNotifications,
     getAllAchievements,
     getAchievementProgress,
-    trackUninterruptedSession
+    trackUninterruptedSession,
+    claimAchievement,
+    showAchievementNotification
   };
 
   return <AchievementContext.Provider value={value}>{children}</AchievementContext.Provider>;

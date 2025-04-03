@@ -7,6 +7,7 @@ import ProgressOverview from './components/dashboard/ProgressOverview';
 import AchievementList from './components/achievements/AchievementList';
 import AnalyticsDashboard from './components/analytics/AnalyticsDashboard';
 import Settings from './components/settings/Settings';
+import NotificationManager from './components/NotificationManager';
 
 // Global styles
 const GlobalStyle = createGlobalStyle`
@@ -152,6 +153,7 @@ const App = () => {
     <ThemeProvider theme={currentTheme || fallbackTheme}>
       <GlobalStyle />
       <AppContainer>
+        <NotificationManager theme={currentTheme || fallbackTheme} />
         <Header>
           <Logo>TRON TIMER</Logo>
           <Nav>

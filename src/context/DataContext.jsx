@@ -132,12 +132,20 @@ const DEFAULT_FOCUS_DATA = {
   sessions: [],
   currentStreak: 0,
   longestStreak: 0,
-  totalFocusMinutes: 0,
+  totalFocusTime: 0, // Total focus time in minutes
   totalSessions: 0,
   uninterruptedSessions: 0,
   interruptedSessions: 0,
   focusEvents: [],
-  lastSessionDate: null
+  lastSessionDate: null,
+  streaks: {
+    current: 0,
+    longest: 0,
+    history: [] // Track streak history for graphs
+  },
+  dailyStats: {}, // Store daily focus minutes for graphs
+  weeklyStats: {}, // Store weekly focus minutes for graphs
+  monthlyStats: {} // Store monthly focus minutes for graphs
 };
 
 // Initialize the storage manager with our app version
@@ -192,12 +200,52 @@ export const DataProvider = ({ children }) => {
     };
   }, []);
 
+  // Update statistics for graphs
+  const updateStatistics = (sessions) => {
+    const dailyStats = {};
+    const weeklyStats = {};
+    const monthlyStats = {};
+    
+    // Process all completed sessions
+    sessions.filter(session => session.completed).forEach(session => {
+      const date = session.date;
+      const duration = session.duration || 0;
+      
+      // Update daily stats
+      if (!dailyStats[date]) {
+        dailyStats[date] = 0;
+      }
+      dailyStats[date] += duration;
+      
+      // Update weekly stats
+      const weekDate = new Date(date);
+      const weekStart = new Date(weekDate);
+      weekStart.setDate(weekDate.getDate() - weekDate.getDay()); // Start of week (Sunday)
+      const weekKey = weekStart.toISOString().split('T')[0];
+      
+      if (!weeklyStats[weekKey]) {
+        weeklyStats[weekKey] = 0;
+      }
+      weeklyStats[weekKey] += duration;
+      
+      // Update monthly stats
+      const monthKey = date.substring(0, 7); // YYYY-MM format
+      if (!monthlyStats[monthKey]) {
+        monthlyStats[monthKey] = 0;
+      }
+      monthlyStats[monthKey] += duration;
+    });
+    
+    return { dailyStats, weeklyStats, monthlyStats };
+  };
+  
   // Add a new focus session
   const addSession = (session) => {
     setFocusData(prevData => {
       const newSessions = [...prevData.sessions, session];
       const totalTime = calculateTotalFocusTime(newSessions);
       const streakData = calculateStreaks(newSessions);
+      const stats = updateStatistics(newSessions);
       
       // Track if this session was interrupted
       const uninterruptedSessions = session.interrupted 
@@ -215,7 +263,10 @@ export const DataProvider = ({ children }) => {
         streaks: streakData,
         uninterruptedSessions,
         interruptedSessions,
-        lastActive: new Date().toISOString().split('T')[0]
+        lastActive: new Date().toISOString().split('T')[0],
+        dailyStats: stats.dailyStats,
+        weeklyStats: stats.weeklyStats,
+        monthlyStats: stats.monthlyStats
       };
     });
   };
@@ -227,7 +278,7 @@ export const DataProvider = ({ children }) => {
     }, 0);
   };
 
-  // Calculate current and longest streaks
+  // Calculate current and longest streaks with history for graphs
   const calculateStreaks = (sessions) => {
     if (sessions.length === 0) {
       return { current: 0, longest: 0, history: [] };
@@ -239,30 +290,35 @@ export const DataProvider = ({ children }) => {
         .filter(session => session.completed)
         .map(session => session.date)
     )].sort();
-
+    
     if (dates.length === 0) {
       return { current: 0, longest: 0, history: [] };
     }
+    
+    // Create a history array for streak visualization in graphs
+    const streakHistory = [];
 
     // Calculate current streak
     let currentStreak = 1;
     const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    
     // Check if the most recent date is today or yesterday
     const mostRecentDate = dates[dates.length - 1];
-    if (mostRecentDate !== today && mostRecentDate !== yesterday) {
+    if (mostRecentDate !== today && mostRecentDate !== yesterdayStr) {
       currentStreak = 0;
     } else {
-      // Count consecutive days backwards
+      // Count consecutive days backwards from the most recent date
       for (let i = dates.length - 2; i >= 0; i--) {
         const currentDate = new Date(dates[i + 1]);
         const prevDate = new Date(dates[i]);
-
+        
         // Check if dates are consecutive
-        const diffTime = currentDate - prevDate;
+        const diffTime = Math.abs(currentDate - prevDate);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
+        
         if (diffDays === 1) {
           currentStreak++;
         } else {
@@ -270,50 +326,44 @@ export const DataProvider = ({ children }) => {
         }
       }
     }
-
+    
     // Calculate longest streak
-    let longestStreak = 1;
+    let longestStreak = currentStreak;
     let tempStreak = 1;
-
+    
+    // Initialize streak history with the first date
+    streakHistory.push({
+      date: dates[0],
+      streak: 1
+    });
+    
+    // Calculate streak for each day and build history
     for (let i = 1; i < dates.length; i++) {
-      const currentDate = new Date(dates[i]);
+      const nextDate = new Date(dates[i]);
       const prevDate = new Date(dates[i - 1]);
-
+      
       // Check if dates are consecutive
-      const diffTime = currentDate - prevDate;
+      const diffTime = Math.abs(nextDate - prevDate);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
+      
       if (diffDays === 1) {
         tempStreak++;
         longestStreak = Math.max(longestStreak, tempStreak);
       } else {
         tempStreak = 1;
       }
+      
+      // Add to streak history for graphs
+      streakHistory.push({
+        date: dates[i],
+        streak: tempStreak
+      });
     }
-
-    // Calculate history
-    const history = dates.map(date => {
-      return { date, count: 1 }; // Initialize with count 1 for each date with completed sessions
-    });
-
-    // Calculate consecutive streaks for history
-    for (let i = 1; i < history.length; i++) {
-      const currentDate = new Date(history[i].date);
-      const prevDate = new Date(history[i - 1].date);
-
-      // Check if dates are consecutive
-      const diffTime = currentDate - prevDate;
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 1) {
-        history[i].count = history[i - 1].count + 1;
-      }
-    }
-
+    
     return {
       current: currentStreak,
       longest: longestStreak,
-      history
+      history: streakHistory
     };
   };
 

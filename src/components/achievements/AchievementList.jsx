@@ -5,6 +5,9 @@ import { useAchievements } from '../../context/AchievementContext';
 import AchievementCard from './AchievementCard';
 import ProgressTracker from './ProgressTracker';
 import UnlockAnimation from './UnlockAnimation';
+import ClaimableAchievement from '../ClaimableAchievement';
+import AnalyticsGraph from '../AnalyticsGraph';
+import StreakProgress from '../StreakProgress';
 
 const Container = styled.div`
   grid-column: 1 / -1;
@@ -73,11 +76,53 @@ const NotificationContainer = styled.div`
   max-width: 300px;
 `;
 
+const TabContainer = styled.div`
+  display: flex;
+  border-bottom: 1px solid ${props => props.theme.grid || '#1d2c3f'};
+  margin-bottom: 20px;
+`;
+
+const Tab = styled.button`
+  background: none;
+  border: none;
+  padding: 10px 20px;
+  color: ${props => props.active ? props.theme.primary : props.theme.text};
+  border-bottom: 2px solid ${props => props.active ? props.theme.primary : 'transparent'};
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Orbitron', sans-serif;
+  
+  &:hover {
+    color: ${props => props.theme.primary};
+  }
+`;
+
+const ClaimableSection = styled.div`
+  margin-bottom: 30px;
+`;
+
+const SectionTitle = styled.h3`
+  color: ${props => props.theme.primary};
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+`;
+
+const IconSpan = styled.span`
+  margin-right: 10px;
+`;
+
 const AchievementList = () => {
-  const { achievements, getAllAchievements, dismissNotification } = useAchievements();
+  const { achievements, getAllAchievements, dismissNotification, claimAchievement } = useAchievements();
   const [filter, setFilter] = useState('all'); // all, unlocked, locked
+  const [activeTab, setActiveTab] = useState('achievements'); // achievements, stats
   
   const allAchievements = getAllAchievements();
+  
+  // Get claimable achievements (unlocked but not claimed)
+  const claimableAchievements = allAchievements.filter(achievement => 
+    achievement.unlocked && !achievement.claimed
+  );
   
   // Filter achievements based on current filter
   const filteredAchievements = allAchievements.filter(achievement => {
@@ -105,51 +150,90 @@ const AchievementList = () => {
   return (
     <Container>
       <Header>
-        <Title>Achievements</Title>
-        <FilterContainer>
-          <FilterButton 
-            data-active={filter === 'all' ? 'true' : 'false'} 
-            onClick={() => setFilter('all')}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+        <Title>Achievements & Stats</Title>
+        <TabContainer>
+          <Tab 
+            active={activeTab === 'achievements'} 
+            onClick={() => setActiveTab('achievements')}
           >
-            All
-          </FilterButton>
-          <FilterButton 
-            data-active={filter === 'unlocked' ? 'true' : 'false'} 
-            onClick={() => setFilter('unlocked')}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            Achievements
+          </Tab>
+          <Tab 
+            active={activeTab === 'stats'} 
+            onClick={() => setActiveTab('stats')}
           >
-            Unlocked
-          </FilterButton>
-          <FilterButton 
-            data-active={filter === 'locked' ? 'true' : 'false'} 
-            onClick={() => setFilter('locked')}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            Locked
-          </FilterButton>
-        </FilterContainer>
+            Statistics
+          </Tab>
+        </TabContainer>
       </Header>
       
-      <ProgressTracker />
-      
-      {sortedAchievements.length > 0 ? (
-        <Grid>
-          {sortedAchievements.map(achievement => (
-            <AchievementCard 
-              key={achievement.id} 
-              achievement={achievement} 
-            />
-          ))}
-        </Grid>
+      {activeTab === 'achievements' ? (
+        <>
+          <ProgressTracker />
+          
+          {claimableAchievements.length > 0 && (
+            <ClaimableSection>
+              <SectionTitle>
+                <IconSpan>🏆</IconSpan> Claim Your Rewards
+              </SectionTitle>
+              {claimableAchievements.map(achievement => (
+                <ClaimableAchievement 
+                  key={achievement.id} 
+                  achievement={achievement}
+                  onClaim={claimAchievement}
+                />
+              ))}
+            </ClaimableSection>
+          )}
+          
+          <FilterContainer>
+            <FilterButton 
+              active={filter === 'all'}
+              onClick={() => setFilter('all')}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              All
+            </FilterButton>
+            <FilterButton 
+              active={filter === 'unlocked'}
+              onClick={() => setFilter('unlocked')}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Unlocked
+            </FilterButton>
+            <FilterButton 
+              active={filter === 'locked'}
+              onClick={() => setFilter('locked')}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Locked
+            </FilterButton>
+          </FilterContainer>
+          
+          {sortedAchievements.length > 0 ? (
+            <Grid>
+              {sortedAchievements.map(achievement => (
+                <AchievementCard 
+                  key={achievement.id} 
+                  achievement={achievement} 
+                />
+              ))}
+            </Grid>
+          ) : (
+            <EmptyState>
+              <h3>No achievements found</h3>
+              <p>Change your filter or complete more focus sessions to unlock achievements!</p>
+            </EmptyState>
+          )}
+        </>
       ) : (
-        <EmptyState>
-          <h3>No achievements found</h3>
-          <p>Change your filter or complete more focus sessions to unlock achievements!</p>
-        </EmptyState>
+        <>
+          <StreakProgress />
+          <AnalyticsGraph />
+        </>
       )}
       
       {/* Achievement Notifications */}
