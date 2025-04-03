@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import { useData } from './DataContext';
 
 // Create the context
@@ -77,13 +78,36 @@ export const AchievementProvider = ({ children }) => {
     localStorage.setItem('achievements', JSON.stringify(achievements));
   }, [achievements]);
 
-  // Check for new achievements whenever focus data changes
-  useEffect(() => {
-    checkAchievements();
-  }, [focusData]);
-
+  // Helper function to check a specific achievement type
+  const checkAchievementType = useCallback((type, currentValue, newUnlocked) => {
+    const achievementType = achievementTypes[type];
+    
+    if (!achievementType) return;
+    
+    for (const tier of achievementType.tiers) {
+      const achievementId = `${type}_${tier.level}`;
+      
+      // Check if this achievement is already unlocked
+      const alreadyUnlocked = achievements.unlocked.some(a => a.id === achievementId);
+      
+      // If not unlocked and requirement is met, add to new unlocked
+      if (!alreadyUnlocked && currentValue >= tier.requirement) {
+        newUnlocked.push({
+          id: achievementId,
+          type,
+          title: achievementType.title,
+          description: achievementType.description,
+          level: tier.level,
+          icon: achievementType.icon,
+          reward: tier.reward,
+          unlockedAt: new Date().toISOString()
+        });
+      }
+    }
+  }, [achievements]);
+  
   // Check if any new achievements have been unlocked
-  const checkAchievements = () => {
+  const checkAchievements = useCallback(() => {
     // Guard clause to ensure focusData is available
     if (!focusData) {
       console.warn('Focus data not available for achievement check');
@@ -112,35 +136,47 @@ export const AchievementProvider = ({ children }) => {
         notifications: [...newUnlocked, ...prev.notifications]
       }));
     }
-  };
-
-  // Helper function to check a specific achievement type
-  const checkAchievementType = (type, currentValue, newUnlocked) => {
-    const achievementType = achievementTypes[type];
+  }, [focusData, checkAchievementType]);
+  
+  // Check for new achievements whenever focus data changes
+  useEffect(() => {
+    checkAchievements();
+  }, [checkAchievements]);
+  
+  // Track uninterrupted sessions for Focus Ninja achievement
+  const trackUninterruptedSession = (sessionData) => {
+    if (!sessionData) return;
     
-    if (!achievementType) return;
+    // Check if this was an uninterrupted session
+    const wasUninterrupted = !sessionData.interrupted;
     
-    for (const tier of achievementType.tiers) {
-      const achievementId = `${type}_${tier.level}`;
+    if (wasUninterrupted) {
+      // Update focus data with this uninterrupted session
+      const updatedFocusData = {
+        ...focusData,
+        uninterruptedSessions: (focusData.uninterruptedSessions || 0) + 1
+      };
       
-      // Check if this achievement is already unlocked
-      const alreadyUnlocked = achievements.unlocked.some(a => a.id === achievementId);
+      // Check for Focus Ninja achievements
+      const newUnlocked = [];
+      checkAchievementType('focusNinja', updatedFocusData.uninterruptedSessions, newUnlocked);
       
-      // If not unlocked and requirement is met, add to new unlocked
-      if (!alreadyUnlocked && currentValue >= tier.requirement) {
-        newUnlocked.push({
-          id: achievementId,
-          type,
-          title: achievementType.title,
-          description: achievementType.description,
-          level: tier.level,
-          icon: achievementType.icon,
-          reward: tier.reward,
-          unlockedAt: new Date().toISOString()
-        });
+      // If new achievements were unlocked, update state
+      if (newUnlocked.length > 0) {
+        setAchievements(prev => ({
+          unlocked: [...prev.unlocked, ...newUnlocked],
+          recent: [...newUnlocked, ...prev.recent].slice(0, 5), // Keep only the 5 most recent
+          notifications: [...newUnlocked, ...prev.notifications]
+        }));
       }
     }
+    
+    return wasUninterrupted;
   };
+
+
+
+
 
   // Dismiss a notification
   const dismissNotification = (notificationId) => {
@@ -215,8 +251,8 @@ export const AchievementProvider = ({ children }) => {
         currentValue = (focusData.sessions || []).filter(s => s?.completed).length;
         break;
       case 'focusNinja':
-        // Assuming we have a way to track uninterrupted sessions
-        currentValue = (focusData.sessions || []).filter(s => s?.completed && !s?.interrupted).length;
+        // Using our dedicated tracking for uninterrupted sessions
+        currentValue = focusData.uninterruptedSessions || 0;
         break;
       case 'earlyBird':
         // Assuming we have a way to track morning sessions
@@ -252,10 +288,15 @@ export const AchievementProvider = ({ children }) => {
     dismissNotification,
     clearAllNotifications,
     getAllAchievements,
-    getAchievementProgress
+    getAchievementProgress,
+    trackUninterruptedSession
   };
 
   return <AchievementContext.Provider value={value}>{children}</AchievementContext.Provider>;
+};
+
+AchievementProvider.propTypes = {
+  children: PropTypes.node.isRequired
 };
 
 // Custom hook to use the achievement context

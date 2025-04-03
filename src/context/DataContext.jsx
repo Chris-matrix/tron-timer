@@ -1,36 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import StorageManager from '../utils/StorageManager';
 
 // Create context
 const DataContext = createContext();
-
-// Initial data
-const initialData = {
-  sessions: [],
-  totalFocusTime: 0,
-  streaks: {
-    current: 0,
-    longest: 0,
-    history: []
-  },
-  settings: {
-    focusDuration: 25,
-    shortBreakDuration: 5,
-    longBreakDuration: 15,
-    sessionsBeforeLongBreak: 4,
-    autoStartPomodoros: false,
-    autoStartBreaks: false,
-    notifications: true,
-    sound: true,
-    dailyGoal: 120, // in minutes
-    weeklyGoal: 600, // in minutes
-    theme: 'tron', // 'dark' or 'light'
-    character: 'tron',
-    musicYoutubeUrl: '',
-    backgroundStyle: 'grid', // 'grid', 'circuits', 'minimal'
-  },
-  lastActive: null,
-};
 
 // Define available themes and characters
 export const AVAILABLE_THEMES = {
@@ -161,6 +134,9 @@ const DEFAULT_FOCUS_DATA = {
   longestStreak: 0,
   totalFocusMinutes: 0,
   totalSessions: 0,
+  uninterruptedSessions: 0,
+  interruptedSessions: 0,
+  focusEvents: [],
   lastSessionDate: null
 };
 
@@ -222,12 +198,23 @@ export const DataProvider = ({ children }) => {
       const newSessions = [...prevData.sessions, session];
       const totalTime = calculateTotalFocusTime(newSessions);
       const streakData = calculateStreaks(newSessions);
+      
+      // Track if this session was interrupted
+      const uninterruptedSessions = session.interrupted 
+        ? prevData.uninterruptedSessions 
+        : prevData.uninterruptedSessions + 1;
+      
+      const interruptedSessions = session.interrupted 
+        ? prevData.interruptedSessions + 1 
+        : prevData.interruptedSessions;
 
       return {
         ...prevData,
         sessions: newSessions,
         totalFocusTime: totalTime,
         streaks: streakData,
+        uninterruptedSessions,
+        interruptedSessions,
         lastActive: new Date().toISOString().split('T')[0]
       };
     });
@@ -336,7 +323,9 @@ export const DataProvider = ({ children }) => {
     const newSession = {
       ...sessionData,
       completedAt: now.toISOString(),
-      id: Date.now()
+      id: Date.now(),
+      // Ensure we have the interrupted flag
+      interrupted: sessionData.interrupted || false
     };
 
     setFocusData(prevData => {
@@ -373,14 +362,29 @@ export const DataProvider = ({ children }) => {
       }
 
       // Calculate total focus minutes
-      const totalFocusMinutes = sessionData.type === 'focus' && !sessionData.wasInterrupted
+      const totalFocusMinutes = sessionData.type === 'focus'
         ? prevData.totalFocusMinutes + sessionData.duration
         : prevData.totalFocusMinutes;
 
       // Calculate total completed sessions
-      const totalSessions = sessionData.type === 'focus' && !sessionData.wasInterrupted
+      const totalSessions = sessionData.type === 'focus'
         ? prevData.totalSessions + 1
         : prevData.totalSessions;
+        
+      // Track uninterrupted sessions for Focus Ninja achievement
+      const uninterruptedSessions = (sessionData.type === 'focus' && !sessionData.interrupted)
+        ? prevData.uninterruptedSessions + 1
+        : prevData.uninterruptedSessions;
+        
+      // Track interrupted sessions
+      const interruptedSessions = (sessionData.type === 'focus' && sessionData.interrupted)
+        ? prevData.interruptedSessions + 1
+        : prevData.interruptedSessions;
+        
+      // Store focus events if provided
+      const focusEvents = sessionData.focusEvents
+        ? [...(prevData.focusEvents || []), ...sessionData.focusEvents].slice(0, 100) // Keep only last 100 events
+        : (prevData.focusEvents || []);
 
       // Update sessions list
       const updatedSessions = [newSession, ...prevData.sessions].slice(0, 100); // Keep only the last 100 sessions
@@ -398,6 +402,9 @@ export const DataProvider = ({ children }) => {
         longestStreak,
         totalFocusMinutes,
         totalSessions,
+        uninterruptedSessions,
+        interruptedSessions,
+        focusEvents,
         lastSessionDate
       };
 
@@ -524,10 +531,36 @@ export const DataProvider = ({ children }) => {
     }
   }, []);
 
+  // Track session interruptions
+  const trackSessionInterruption = useCallback((sessionData, focusEvents) => {
+    if (!sessionData) return;
+    
+    setFocusData(prevData => {
+      // Update the session with interruption data
+      const updatedSessions = prevData.sessions.map(session => {
+        if (session.id === sessionData.id) {
+          return {
+            ...session,
+            interrupted: true,
+            focusEvents: focusEvents || []
+          };
+        }
+        return session;
+      });
+      
+      return {
+        ...prevData,
+        sessions: updatedSessions,
+        interruptedSessions: prevData.interruptedSessions + 1
+      };
+    });
+  }, []);
+  
   return (
     <DataContext.Provider value={{
       focusData,
       addSession,
+      addCompletedSession,
       updateSettings,
       toggleTheme,
       getDailyProgress,
@@ -536,11 +569,16 @@ export const DataProvider = ({ children }) => {
       getAvailableThemes,
       getAvailableCharacters,
       getCurrentTheme,
-      clearAllData // Use clearAllData instead of resetData
+      trackSessionInterruption,
+      clearAllData
     }}>
       {children}
     </DataContext.Provider>
   );
+};
+
+DataProvider.propTypes = {
+  children: PropTypes.node.isRequired
 };
 
 export const useData = () => useContext(DataContext);
