@@ -250,7 +250,7 @@ const ConfirmationButtons = styled.div`
 `;
 
 const Settings = () => {
-  const { focusData, updateSettings, getAvailableThemes, getAvailableCharacters, getCurrentTheme, resetData } = useData();
+  const { focusData, updateSettings, getAvailableThemes, getAvailableCharacters, resetData } = useData();
   const [settings, setSettings] = useState({ ...focusData.settings });
   const [showConfirmation, setShowConfirmation] = useState(false);
   
@@ -278,7 +278,7 @@ const Settings = () => {
       if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
         try {
           Notification.requestPermission();
-        } catch (error) {
+        } catch {
           console.log('Notification API not supported in this environment');
         }
       }

@@ -109,7 +109,7 @@ const EmptyState = styled.div`
 `;
 
 const RecentMilestones = () => {
-  const { achievements, getAllAchievements, getAchievementProgress } = useAchievements();
+  const { getAllAchievements, getAchievementProgress } = useAchievements();
   
   // Get all achievements
   const allAchievements = getAllAchievements();

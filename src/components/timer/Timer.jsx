@@ -2,18 +2,12 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import styled, { keyframes } from 'styled-components';
 import { motion } from 'framer-motion';
 import { useData, AVAILABLE_THEMES } from '../../context/DataContext';
-import { useAchievements } from '../../context/AchievementContext';
 import TimerSounds from './TimerSounds';
 import TimerManager from '../../utils/TimerManager';
 import NotificationManager from '../../utils/NotificationManager';
 import PropTypes from 'prop-types';
 
 // TRON-inspired animations
-const glowEffect = keyframes`
-  0% { filter: drop-shadow(0 0 5px ${props => props.theme?.primary || '#00f6ff'}); }
-  50% { filter: drop-shadow(0 0 20px ${props => props.theme?.primary || '#00f6ff'}); }
-  100% { filter: drop-shadow(0 0 5px ${props => props.theme?.primary || '#00f6ff'}); }
-`;
 
 const gridLines = keyframes`
   0% { opacity: 0.2; }
@@ -48,7 +42,7 @@ const circuitPulse = keyframes`
   100% { stroke-width: 1; opacity: 0.3; }
 `;
 
-const TimerContainer = styled.div.attrs(props => ({
+const TimerContainer = styled.div.attrs(() => ({
   style: {
     // Dynamic styles that change frequently can go here
   }
@@ -154,7 +148,7 @@ const CircuitLine = styled.path.attrs(props => ({
   fill: none;
   stroke-width: 1.5;
   stroke-linecap: round;
-  animation: ${circuitPulse} ${props => 3 + Math.random() * 5}s ease-in-out infinite;
+  animation: ${circuitPulse} ${() => 3 + Math.random() * 5}s ease-in-out infinite;
 `;
 
 const CircuitNode = styled.circle`
@@ -165,9 +159,9 @@ const CircuitNode = styled.circle`
 `;
 
 // Code rain effect
-const CodeRainContainer = styled.div.attrs(props => ({
+const CodeRainContainer = styled.div.attrs(({ $backgroundStyle }) => ({
   style: {
-    display: props.$backgroundStyle === 'code' ? 'block' : 'none'
+    display: $backgroundStyle === 'code' ? 'block' : 'none'
   }
 }))`
   position: fixed;
@@ -187,9 +181,9 @@ const CodeColumn = styled.div`
   font-family: monospace;
   font-size: 14px;
   line-height: 1;
-  animation: ${codeRain} ${props => 5 + Math.random() * 15}s linear infinite;
-  animation-delay: ${props => Math.random() * 5}s;
-  opacity: ${props => 0.3 + Math.random() * 0.7};
+  animation: ${codeRain} ${() => 5 + Math.random() * 15}s linear infinite;
+  animation-delay: ${() => Math.random() * 5}s;
+  opacity: ${() => 0.3 + Math.random() * 0.7};
 `;
 
 // YouTube player
@@ -476,7 +470,7 @@ const Timer = ({ session = {}, onComplete = () => {}, onPause = () => {}, onResu
         timerRef.current.destroy();
       }
     };
-  }, [handleTimerComplete, handleInterruption, timeLeft]);
+  }, [handleTimerComplete, handleInterruption, timeLeft, isActive, isPaused]);
   
   // Update timer when settings change
   useEffect(() => {

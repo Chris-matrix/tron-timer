@@ -148,7 +148,7 @@ const motivationalQuotes = [
 
 const ProgressOverview = () => {
   const { focusData, getDailyProgress, getWeeklyProgress } = useData();
-  const { achievements, getAllAchievements } = useAchievements();
+  const { getAllAchievements } = useAchievements();
   
   // Get today's date
   const today = new Date().toISOString().split('T')[0];
