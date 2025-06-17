@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+dist
+build
+coverage
+*.d.ts
+*.generated.*
+.prisma
+.vercel
+.vscode
+*.md

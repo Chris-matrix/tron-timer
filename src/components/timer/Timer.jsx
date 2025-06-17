@@ -50,15 +50,16 @@ const TimerContainer = styled.div.attrs(() => ({
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  height: 100%;
+  justify-content: space-between;
+  padding: 1.5rem;
+  min-height: 100vh;
   position: relative;
   overflow: hidden;
+  background: ${props => props.theme?.background || '#0c141f'};
   
   &:before {
     content: '';
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     right: 0;
@@ -72,10 +73,11 @@ const TimerContainer = styled.div.attrs(() => ({
       }
       return 'none';
     }};
-    background-size: 30px 30px;
+    background-size: 40px 40px;
     opacity: 0.15;
-    z-index: -1;
-    animation: ${props => props.$backgroundStyle === 'grid' ? gridLines : 'none'} 8s infinite;
+    z-index: 0;
+    animation: ${props => props.$backgroundStyle === 'grid' ? gridLines : 'none'} 15s linear infinite;
+    pointer-events: none;
   }
 `;
 
@@ -200,21 +202,36 @@ const YouTubePlayerContainer = styled.div`
   padding: 5px;
 `;
 
-const ProgressRingContainer = styled.div`
+const ProgressRingContainer = styled(motion.div)`
   position: relative;
+  width: min(90vw, 400px);
+  height: min(90vw, 400px);
+  margin: 1rem 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 250px;
-  height: 250px;
-  order: 1;
+  
+  svg {
+    width: 100%;
+    height: 100%;
+    transition: transform 0.3s ease;
+    
+    &:hover {
+      transform: scale(1.02);
+    }
+  }
 `;
 
 const TimerDisplay = styled(motion.div)`
-  font-size: 4.5rem;
+  font-size: 5.5rem;
   font-family: 'Orbitron', sans-serif;
   color: ${props => props.theme?.primary || '#00f6ff'};
-  text-shadow: 0 0 10px ${props => (props.theme?.primary || '#00f6ff') + '80'};
+  text-shadow: 0 0 15px ${props => (props.theme?.primary || '#00f6ff') + 'b3'};
+  margin: 0.5rem 0;
+  letter-spacing: 2px;
+  position: relative;
+  z-index: 2;
+  text-align: center;
   letter-spacing: 2px;
   margin-top: 0.5rem;
   margin-bottom: 1.5rem;
@@ -237,37 +254,76 @@ const SessionCounter = styled.div`
   margin-top: 0.5rem;
 `;
 
-const ButtonsContainer = styled.div`
+const ButtonsContainer = styled(motion.div)`
   display: flex;
-  gap: 1rem;
-  margin-top: 2rem;
+  gap: 1.2rem;
+  margin: 1.5rem 0;
+  z-index: 1;
   flex-wrap: wrap;
   justify-content: center;
+  width: 100%;
+  max-width: 500px;
+  padding: 0 1rem;
+  
+  @media (max-width: 480px) {
+    gap: 0.8rem;
+    margin: 1rem 0;
+  }
 `;
 
 const TimerButton = styled(motion.button)`
   background: ${props => props.theme?.background || '#0c141f'};
   color: ${props => props.theme?.primary || '#00f6ff'};
   border: 2px solid ${props => props.theme?.primary || '#00f6ff'};
-  border-radius: 4px;
-  padding: 0.75rem 1.5rem;
-  font-family: 'Orbitron', sans-serif;
-  font-size: 1rem;
+  padding: 0.9rem 1.8rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 6px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  box-shadow: 0 0 10px ${props => (props.theme?.primary || '#00f6ff') + '40'};
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
   transition: all 0.3s ease;
+  box-shadow: 0 0 15px ${props => (props.theme?.primary || '#00f6ff') + '4d'};
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+  min-width: 120px;
   
-  &:hover {
-    background: ${props => (props.theme?.primary || '#00f6ff') + '20'};
-    box-shadow: 0 0 15px ${props => (props.theme?.primary || '#00f6ff') + '60'};
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      ${props => props.theme?.primary + '33' || 'rgba(0, 246, 255, 0.2)'},
+      transparent
+    );
+    transition: 0.5s;
+    z-index: -1;
   }
   
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  &:hover::before {
+    left: 100%;
+  }
+  
+  &:hover {
+    background: ${props => props.theme?.primary + '1a' || 'rgba(0, 246, 255, 0.1)'};
+    box-shadow: 0 0 25px ${props => (props.theme?.primary || '#00f6ff') + 'b3'};
+    transform: translateY(-2px);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+  
+  @media (max-width: 480px) {
+    padding: 0.7rem 1.2rem;
+    font-size: 1rem;
+    min-width: 100px;
   }
 `;
 
@@ -604,14 +660,19 @@ const Timer = ({ session = {}, onComplete = () => {}, onPause = () => {}, onResu
   
   return (
     <TimerContainer $backgroundStyle={backgroundStyle} theme={theme}>
-      {/* Add TRON-inspired data flow lines */}
+      {/* Enhanced TRON-inspired data flow lines */}
       <DataFlowLines viewBox="0 0 1000 1000" $backgroundStyle={backgroundStyle}>
-        <DataLine d="M 50,50 C 200,300 800,700 950,950" theme={theme} />
-        <DataLine d="M 950,50 C 800,300 200,700 50,950" theme={theme} />
-        <DataLine d="M 500,0 C 500,300 500,700 500,1000" theme={theme} />
-        <DataLine d="M 0,500 C 300,500 700,500 1000,500" theme={theme} />
-        <DataLine d="M 0,0 C 300,300 700,700 1000,1000" theme={theme} />
-        <DataLine d="M 1000,0 C 700,300 300,700 0,1000" theme={theme} />
+        {Array.from({ length: 8 }).map((_, i) => (
+          <DataLine 
+            key={`line-${i}`}
+            d={`M ${Math.random() * 1000},0 C ${Math.random() * 1000},${Math.random() * 1000} ${Math.random() * 1000},${Math.random() * 1000} ${Math.random() * 1000},1000`} 
+            theme={theme} 
+            style={{
+              animationDelay: `${i * 0.5}s`,
+              opacity: 0.3 + (Math.random() * 0.3)
+            }}
+          />
+        ))}
       </DataFlowLines>
       
       {/* Circuit background */}
@@ -637,8 +698,13 @@ const Timer = ({ session = {}, onComplete = () => {}, onPause = () => {}, onResu
         ))}
       </CodeRainContainer>
       
-      <ProgressRingContainer>
-        <svg width="250" height="250" viewBox="0 0 250 250">
+      <ProgressRingContainer
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.5, type: 'spring', damping: 10, stiffness: 100 }}
+      >
+        <svg viewBox="0 0 250 250">
+          {/* Background circle */}
           <circle
             cx="125"
             cy="125"
@@ -646,31 +712,84 @@ const Timer = ({ session = {}, onComplete = () => {}, onPause = () => {}, onResu
             fill="none"
             stroke={theme.grid}
             strokeWidth="10"
+            opacity="0.3"
           />
-          <circle
+          {/* Progress circle */}
+          <motion.circle
             cx="125"
             cy="125"
             r="120"
             fill="none"
             stroke={theme.primary}
-            strokeWidth="10"
+            strokeWidth="12"
             strokeDasharray={2 * Math.PI * 120}
             strokeDashoffset={2 * Math.PI * 120 * (1 - ((timeLeft || 0) / (duration * 60 || 1)))}
             strokeLinecap="round"
             transform="rotate(-90 125 125)"
+            style={{
+              filter: `drop-shadow(0 0 8px ${theme.primary + '80'})`
+            }}
+            transition={{
+              strokeDashoffset: { duration: 1, ease: 'linear' }
+            }}
+          />
+          {/* Inner glow */}
+          <circle
+            cx="125"
+            cy="125"
+            r="114"
+            fill="none"
+            stroke={theme.primary}
+            strokeWidth="2"
+            opacity="0.3"
           />
         </svg>
       </ProgressRingContainer>
       
-      <TimerDisplay
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
+      <motion.div
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
       >
-        {formatTime(timeLeft)}
-      </TimerDisplay>
+        <TimerDisplay
+          key={timeLeft}
+          initial={{ scale: 1.1, opacity: 0.8 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', damping: 10, stiffness: 100 }}
+        >
+          {formatTime(timeLeft)}
+        </TimerDisplay>
+      </motion.div>
       
-      <SessionLabel>{sessionType === 'focus' ? 'FOCUS SESSION' : 'BREAK'}</SessionLabel>
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
+      >
+        <SessionLabel>
+          {sessionType === 'focus' ? 'FOCUS SESSION' : 'BREAK'}
+          {sessionType === 'focus' && (
+            <motion.span
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ 
+                repeat: Infinity, 
+                repeatType: 'reverse',
+                duration: 2,
+                ease: 'easeInOut'
+              }}
+              style={{
+                display: 'inline-block',
+                marginLeft: '10px',
+                color: theme.primary,
+                textShadow: `0 0 8px ${theme.primary}`
+              }}
+            >
+              ⚡
+            </motion.span>
+          )}
+        </SessionLabel>
+      </motion.div>
       
       {/* YouTube player */}
       {youtubeVideoId && (
@@ -687,7 +806,11 @@ const Timer = ({ session = {}, onComplete = () => {}, onPause = () => {}, onResu
         </YouTubePlayerContainer>
       )}
       
-      <ButtonsContainer>
+      <ButtonsContainer
+        initial={{ y: 30, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.4 }}
+      >
         {!isActive ? (
           <TimerButton 
             onClick={startTimer}

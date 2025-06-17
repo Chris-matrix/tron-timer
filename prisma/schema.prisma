@@ -1,15 +1,134 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex", "postgresqlExtensions"]
+  output         = "../node_modules/.prisma/client"
+  binaryTargets  = ["native", "rhel-openssl-1.0.x"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// User model for authentication and preferences
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  emailVerified DateTime? @map("email_verified")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  sessions      Session[]
+  accounts      Account[]
+  preferences   UserPreferences?
+  focusSessions FocusSession[]
+  achievements  UserAchievement[]
+  
+  @@map("users")
+}
+
+// User preferences
+model UserPreferences {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme           String   @default("tron")
+  focusDuration   Int      @default(25) // in minutes
+  shortBreak      Int      @default(5)  // in minutes
+  longBreak       Int      @default(15) // in minutes
+  autoStartBreaks Boolean  @default(false)
+  autoStartPomodoros Boolean @default(false)
+  soundEnabled    Boolean  @default(true)
+  soundVolume     Int      @default(70) // 0-100
+  notifications   Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  @@map("user_preferences")
+}
+
+// Focus sessions
+model FocusSession {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String   // 'focus', 'short_break', 'long_break'
+  duration    Int      // in seconds
+  completedAt DateTime @default(now()) @map("completed_at")
+  notes       String?
+  
+  @@index([userId])
+  @@index([completedAt])
+  @@map("focus_sessions")
+}
+
+// Achievements
+model Achievement {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  icon        String
+  color       String
+  criteria    Json     // Criteria for unlocking the achievement
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  userAchievements UserAchievement[]
+  
+  @@map("achievements")
+}
+
+// User achievements
+model UserAchievement {
+  id             String      @id @default(cuid())
+  userId         String
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId  String
+  achievement    Achievement @relation(fields: [achievementId], references: [id])
+  unlockedAt     DateTime    @default(now()) @map("unlocked_at")
+  
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+// OAuth and authentication models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @db.Text
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
 }
