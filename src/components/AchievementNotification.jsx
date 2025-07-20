@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 
@@ -74,8 +74,15 @@ const CloseButton = styled.button`
   }
 `;
 
-const AchievementNotification = ({ achievement, onClose, theme, autoCloseTime = 5000 }) => {
+const AchievementNotification = ({ achievement, onClose, theme, autoCloseTime = 30000 }) => {
   const [isClosing, setIsClosing] = useState(false);
+  
+  const handleClose = useCallback(() => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+    }, 500); // Match the animation duration
+  }, [onClose]);
   
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -83,14 +90,7 @@ const AchievementNotification = ({ achievement, onClose, theme, autoCloseTime = 
     }, autoCloseTime);
     
     return () => clearTimeout(timer);
-  }, [autoCloseTime]);
-  
-  const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      onClose();
-    }, 500); // Match the animation duration
-  };
+  }, [autoCloseTime, handleClose]);
   
   return (
     <NotificationContainer theme={theme} className={isClosing ? 'closing' : ''}>

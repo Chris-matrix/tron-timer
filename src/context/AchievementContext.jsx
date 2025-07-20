@@ -350,6 +350,7 @@ export const AchievementProvider = ({ children }) => {
   // The value that will be available to consumers of this context
   const value = {
     achievements,
+    setAchievements,
     achievementTypes,
     dismissNotification,
     clearAllNotifications,

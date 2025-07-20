@@ -5,7 +5,7 @@ import { useAchievements } from '../../context/AchievementContext';
 
 const TimerContainer = () => {
   const { focusData, addSession } = useData();
-  const { checkAchievements } = useAchievements();
+  const { checkAchievements, setAchievements } = useAchievements();
   
   // Session state
   const [currentSession, setCurrentSession] = useState({
@@ -42,6 +42,22 @@ const TimerContainer = () => {
     // Check for achievements
     checkAchievements();
     
+    // Add notification for timer completion
+    const notification = {
+      id: `timer_complete_${Date.now()}`,
+      type: 'timerComplete',
+      title: 'Timer Complete!',
+      message: `${currentSession.type === 'focus' ? 'Focus' : 'Break'} session completed`,
+      icon: currentSession.type === 'focus' ? '🎯' : '☕',
+      timestamp: new Date().toISOString()
+    };
+    
+    // Add notification to state
+    setAchievements(prev => ({
+      ...prev,
+      notifications: [notification, ...prev.notifications]
+    }));
+    
     // Determine next session type
     const nextSessionType = currentSession.type === 'focus' 
       ? 'shortBreak' 
@@ -55,7 +71,7 @@ const TimerContainer = () => {
         : focusData?.settings?.shortBreakDuration || 5,
       startedAt: null
     });
-  }, [currentSession, addSession, checkAchievements, focusData?.settings]);
+  }, [currentSession, addSession, checkAchievements, setAchievements, focusData?.settings]);
   
   // Handle session pause
   const handleSessionPause = useCallback(() => {
