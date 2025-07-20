@@ -1,8 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { useAchievements } from '../context/AchievementContext';
 import AchievementNotification from './AchievementNotification';
+import { debounce } from 'lodash-es';
+
+// Constants
+const MAX_VISIBLE_NOTIFICATIONS = 3;
+const NOTIFICATION_DEBOUNCE_MS = 100;
 
 const NotificationsContainer = styled.div`
   position: fixed;
@@ -14,35 +19,70 @@ const NotificationsContainer = styled.div`
   gap: 10px;
 `;
 
-const NotificationManager = ({ theme }) => {
+const NotificationManager = React.memo(({ theme }) => {
   const { achievements, dismissNotification } = useAchievements();
   const [activeNotifications, setActiveNotifications] = useState([]);
+  const notificationsRef = React.useRef(achievements.notifications || []);
   
-  // Listen for new notifications in the achievements context
-  useEffect(() => {
-    if (achievements.notifications && achievements.notifications.length > 0) {
-      // Only show notifications that aren't already being displayed
-      const currentIds = activeNotifications.map(n => n.id);
-      const newNotifications = achievements.notifications.filter(
-        n => !currentIds.includes(n.id)
-      );
-      
-      if (newNotifications.length > 0) {
-        setActiveNotifications(prev => [...prev, ...newNotifications]);
-      }
-    }
-  }, [achievements.notifications, activeNotifications]);
-  
-  // Handle closing a notification
-  const handleClose = (notificationId) => {
+  // Memoize the dismiss function to prevent unnecessary re-renders
+  const handleClose = useCallback((notificationId) => {
     setActiveNotifications(prev => 
       prev.filter(notification => notification.id !== notificationId)
     );
-    dismissNotification(notificationId);
-  };
+    // Use setTimeout with 0ms as a fallback for requestAnimationFrame
+    const timer = setTimeout(() => {
+      dismissNotification(notificationId);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [dismissNotification]);
   
-  // Limit the number of visible notifications to 3 at a time
-  const visibleNotifications = activeNotifications.slice(0, 3);
+  // Debounce state updates to prevent rapid re-renders
+  const updateActiveNotifications = useMemo(
+    () =>
+      debounce((newNotifications) => {
+        setActiveNotifications(prev => {
+          // Only update if there are actual changes
+          const currentIds = new Set(prev.map(n => n.id));
+          const uniqueNew = newNotifications.filter(n => !currentIds.has(n.id));
+          return uniqueNew.length > 0 ? [...prev, ...uniqueNew] : prev;
+        });
+      }, NOTIFICATION_DEBOUNCE_MS),
+    []
+  );
+  
+  // Effect to handle new notifications
+  useEffect(() => {
+    if (achievements.notifications?.length > 0) {
+      // Only process if notifications array has changed
+      if (JSON.stringify(notificationsRef.current) !== JSON.stringify(achievements.notifications)) {
+        const newNotifications = achievements.notifications.filter(
+          n => !notificationsRef.current.some(existing => existing.id === n.id)
+        );
+        
+        if (newNotifications.length > 0) {
+          updateActiveNotifications(newNotifications);
+          notificationsRef.current = [...achievements.notifications];
+        }
+      }
+    }
+    
+    return () => {
+      updateActiveNotifications.cancel();
+    };
+  }, [achievements.notifications, updateActiveNotifications]);
+  
+  // Memoize visible notifications to prevent unnecessary re-renders
+  const visibleNotifications = useMemo(() => 
+    activeNotifications.slice(0, MAX_VISIBLE_NOTIFICATIONS),
+    [activeNotifications]
+  );
+  
+  // Clean up debounce on unmount
+  useEffect(() => {
+    return () => {
+      updateActiveNotifications.cancel();
+    };
+  }, [updateActiveNotifications]);
   
   return (
     <NotificationsContainer>
@@ -50,14 +90,14 @@ const NotificationManager = ({ theme }) => {
         <AchievementNotification
           key={notification.id}
           achievement={notification}
-          onClose={() => handleClose(notification.id)}
+          onClose={handleClose}
           theme={theme}
-          autoCloseTime={5000}
+          autoCloseTime={30000} // 30 seconds
         />
       ))}
     </NotificationsContainer>
   );
-};
+});
 
 NotificationManager.propTypes = {
   theme: PropTypes.object

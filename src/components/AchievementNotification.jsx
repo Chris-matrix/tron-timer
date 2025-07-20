@@ -1,6 +1,29 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import PropTypes from 'prop-types';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
+
+// Animation keyframes
+const slideIn = keyframes`
+  from {
+    transform: translate3d(100%, 0, 0);
+    opacity: 0;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+`;
+
+const slideOut = keyframes`
+  from {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(100%, 0, 0);
+    opacity: 0;
+  }
+`;
 
 const NotificationContainer = styled.div`
   position: fixed;
@@ -14,32 +37,13 @@ const NotificationContainer = styled.div`
   box-shadow: 0 0 15px rgba(0, 246, 255, 0.4);
   padding: 15px;
   color: ${props => props.theme.text || '#ffffff'};
-  animation: slideIn 0.5s ease-out forwards;
-  
-  @keyframes slideIn {
-    from {
-      transform: translateX(100%);
-      opacity: 0;
-    }
-    to {
-      transform: translateX(0);
-      opacity: 1;
-    }
-  }
-  
-  @keyframes slideOut {
-    from {
-      transform: translateX(0);
-      opacity: 1;
-    }
-    to {
-      transform: translateX(100%);
-      opacity: 0;
-    }
-  }
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  animation: ${slideIn} 0.5s ease-out forwards;
   
   &.closing {
-    animation: slideOut 0.5s ease-in forwards;
+    animation: ${slideOut} 0.5s ease-in forwards;
   }
 `;
 
@@ -74,38 +78,70 @@ const CloseButton = styled.button`
   }
 `;
 
-const AchievementNotification = ({ achievement, onClose, theme, autoCloseTime = 30000 }) => {
+const AchievementNotification = React.memo(({ achievement, onClose, theme, autoCloseTime = 30000 }) => {
   const [isClosing, setIsClosing] = useState(false);
+  const timerRef = useRef();
   
   const handleClose = useCallback(() => {
     setIsClosing(true);
-    setTimeout(() => {
+    // Clear any pending auto-close timeout
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+    // Schedule the actual close after animation
+    const closeTimer = setTimeout(() => {
       onClose();
     }, 500); // Match the animation duration
+    
+    return () => clearTimeout(closeTimer);
   }, [onClose]);
   
   useEffect(() => {
-    const timer = setTimeout(() => {
+    // Set up auto-close timer
+    timerRef.current = setTimeout(() => {
       handleClose();
     }, autoCloseTime);
     
-    return () => clearTimeout(timer);
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
   }, [autoCloseTime, handleClose]);
   
+  // Memoize the notification content to prevent unnecessary re-renders
+  const notificationContent = useMemo(() => ({
+    title: `${achievement.title} Level ${achievement.level}`,
+    description: achievement.description,
+    reward: achievement.reward,
+    icon: achievement.icon
+  }), [achievement]);
+  
   return (
-    <NotificationContainer theme={theme} className={isClosing ? 'closing' : ''}>
-      <CloseButton onClick={handleClose} theme={theme}>×</CloseButton>
+    <NotificationContainer 
+      theme={theme} 
+      className={isClosing ? 'closing' : ''}
+      aria-live="polite"
+      role="status"
+    >
+      <CloseButton 
+        onClick={handleClose} 
+        theme={theme}
+        aria-label="Close notification"
+      >
+        ×
+      </CloseButton>
       <Title theme={theme}>
-        <Icon>{achievement.icon}</Icon>
+        <Icon aria-hidden="true">{notificationContent.icon}</Icon>
         Achievement Unlocked!
       </Title>
       <Message>
-        <strong>{achievement.title} Level {achievement.level}</strong>: {achievement.description}
+        <strong>{notificationContent.title}</strong>: {notificationContent.description}
       </Message>
-      <div>Reward: {achievement.reward}</div>
+      <div>Reward: {notificationContent.reward}</div>
     </NotificationContainer>
   );
-};
+});
 
 AchievementNotification.propTypes = {
   achievement: PropTypes.shape({
