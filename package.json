@@ -22,7 +22,7 @@
     "db:push": "prisma db push --accept-data-loss",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "vercel-build": "prisma generate && prisma migrate deploy && vite build",
+    "vercel-build": "npm install && npm run build",
     "vercel-dev": "prisma generate && prisma migrate dev"
   },
   "keywords": [
