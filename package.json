@@ -23,7 +23,8 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "vercel-build": "npm install && npm run build",
-    "vercel-dev": "prisma generate && prisma migrate dev"
+    "vercel-dev": "prisma generate && prisma migrate dev",
+    "now-build": "npm run build"
   },
   "keywords": [
     "tron",

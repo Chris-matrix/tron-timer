@@ -6,7 +6,7 @@
       "use": "@vercel/static-build",
       "config": {
         "distDir": "dist",
-        "buildCommand": "npm run build"
+        "buildCommand": "chmod +x vercel-build.sh && ./vercel-build.sh"
       }
     },
     {
@@ -27,5 +27,8 @@
       "src": "/assets/(.*)",
       "dest": "/assets/$1"
     }
-  ]
+  ],
+  "framework": "vite",
+  "buildCommand": "chmod +x vercel-build.sh && ./vercel-build.sh",
+  "outputDirectory": "dist"
 }
