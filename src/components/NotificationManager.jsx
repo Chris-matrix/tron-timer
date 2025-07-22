@@ -1,9 +1,20 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { useAchievements } from '../context/AchievementContext';
 import AchievementNotification from './AchievementNotification';
-import { debounce } from 'lodash-es';
+// Simple debounce implementation
+const debounce = (func, wait) => {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+};
 
 // Constants
 const MAX_VISIBLE_NOTIFICATIONS = 3;

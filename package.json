@@ -48,6 +48,7 @@
     "express": "^4.21.2",
     "framer-motion": "^12.6.2",
     "helmet": "^7.1.0",
+    "lodash-es": "^4.17.21",
     "morgan": "^1.10.0",
     "next-auth": "^4.24.5",
     "react": "^19.0.0",
