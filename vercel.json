@@ -20,20 +20,19 @@
       "dest": "/api/$1"
     },
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    },
-    {
       "src": "/assets/(.*)",
       "dest": "/assets/$1"
     },
     {
       "src": "/sounds/(.*)",
       "dest": "/sounds/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ],
   "framework": "vite",
   "buildCommand": "chmod +x vercel-build.sh && ./vercel-build.sh",
   "outputDirectory": "dist"
-  
 }
