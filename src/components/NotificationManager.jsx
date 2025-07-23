@@ -3,10 +3,11 @@ import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { useAchievements } from '../context/AchievementContext';
 import AchievementNotification from './AchievementNotification';
-// Simple debounce implementation
+// Enhanced debounce implementation with cancel method
 const debounce = (func, wait) => {
   let timeout;
-  return function executedFunction(...args) {
+  
+  const debounced = function(...args) {
     const later = () => {
       clearTimeout(timeout);
       func(...args);
@@ -14,6 +15,12 @@ const debounce = (func, wait) => {
     clearTimeout(timeout);
     timeout = setTimeout(later, wait);
   };
+  
+  debounced.cancel = () => {
+    clearTimeout(timeout);
+  };
+  
+  return debounced;
 };
 
 // Constants
@@ -91,7 +98,9 @@ const NotificationManager = React.memo(({ theme }) => {
   // Clean up debounce on unmount
   useEffect(() => {
     return () => {
-      updateActiveNotifications.cancel();
+      if (updateActiveNotifications && typeof updateActiveNotifications.cancel === 'function') {
+        updateActiveNotifications.cancel();
+      }
     };
   }, [updateActiveNotifications]);
   

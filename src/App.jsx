@@ -8,6 +8,7 @@ import AchievementList from './components/achievements/AchievementList';
 import AnalyticsDashboard from './components/analytics/AnalyticsDashboard';
 import Settings from './components/settings/Settings';
 import NotificationManager from './components/NotificationManager';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Global styles
 const GlobalStyle = createGlobalStyle`
@@ -153,7 +154,9 @@ const App = () => {
     <ThemeProvider theme={currentTheme || fallbackTheme}>
       <GlobalStyle />
       <AppContainer>
-        <NotificationManager theme={currentTheme || fallbackTheme} />
+        <ErrorBoundary>
+          <NotificationManager theme={currentTheme || fallbackTheme} />
+        </ErrorBoundary>
         <Header>
           <Logo>TRON TIMER</Logo>
           <Nav>
