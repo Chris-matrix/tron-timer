@@ -176,13 +176,15 @@ const AchievementList = () => {
               <SectionTitle>
                 <IconSpan>🏆</IconSpan> Claim Your Rewards
               </SectionTitle>
-              {claimableAchievements.map(achievement => (
-                <ClaimableAchievement 
-                  key={achievement.id} 
-                  achievement={achievement}
-                  onClaim={claimAchievement}
-                />
-              ))}
+              {achievements.unlocked && (
+                  claimableAchievements.map(achievement => (
+                  <ClaimableAchievement 
+                    key={achievement.id} 
+                    achievement={achievement}
+                    onClaim={claimAchievement}
+                  />
+                ))
+              )}
             </ClaimableSection>
           )}
           
@@ -215,7 +217,7 @@ const AchievementList = () => {
           
           {sortedAchievements.length > 0 ? (
             <Grid>
-              {sortedAchievements.map(achievement => (
+              {achievements.unlocked && sortedAchievements.map(achievement => (
                 <AchievementCard 
                   key={achievement.id} 
                   achievement={achievement} 
@@ -239,7 +241,7 @@ const AchievementList = () => {
       {/* Achievement Notifications */}
       <NotificationContainer>
         <AnimatePresence>
-          {achievements.notifications.map(notification => (
+          {achievements.notifications && achievements.notifications.map(notification => (
             <UnlockAnimation 
               key={notification.id} 
               achievement={notification} 

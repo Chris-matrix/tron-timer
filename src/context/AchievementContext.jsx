@@ -88,6 +88,7 @@ export const AchievementProvider = ({ children }) => {
       const achievementId = `${type}_${tier.level}`;
       
       // Check if this achievement is already unlocked
+      if (!achievements.unlocked) return;
       const alreadyUnlocked = achievements.unlocked.some(a => a.id === achievementId);
       
       // If not unlocked and requirement is met, add to new unlocked
@@ -149,6 +150,7 @@ export const AchievementProvider = ({ children }) => {
     if (newUnlocked.length > 0) {
       setAchievements(prev => {
         // Mark new achievements as unclaimed by default
+        if (!prev.unlocked) return prev;
         const markedNewUnlocked = newUnlocked.map(achievement => ({
           ...achievement,
           claimed: false,
@@ -231,6 +233,8 @@ export const AchievementProvider = ({ children }) => {
       // For each tier in this type
       typeData.tiers.forEach(tier => {
         const achievementId = `${typeId}_${tier.level}`;
+
+        if (!achievements.unlocked) return;
         const unlocked = achievements.unlocked.find(a => a.id === achievementId);
         
         allAchievements.push({
@@ -318,6 +322,7 @@ export const AchievementProvider = ({ children }) => {
       if (!achievement) return prev;
       
       // Mark the achievement as claimed
+      if (!prev.unlocked) return prev;
       const updatedUnlocked = prev.unlocked.map(a => 
         a.id === achievementId ? { ...a, claimed: true } : a
       );
